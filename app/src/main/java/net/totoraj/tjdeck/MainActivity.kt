@@ -13,12 +13,14 @@ import android.text.format.DateFormat
 import android.util.Log
 import android.view.KeyEvent
 import android.view.View
+import android.view.ViewGroup
 import android.view.WindowManager
 import android.webkit.ValueCallback
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceRequest
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import android.widget.FrameLayout
 
 import java.io.BufferedReader
 import java.io.File
@@ -32,12 +34,11 @@ class MainActivity : Activity() {
     companion object {
         const val TAG = "TJDeck"
         const val INPUT_FILE_REQUEST_CODE = 1
-        // const val EXTRA_FROM_NOTIFICATION = "EXTRA_FORM_NOTIFICATION"
-
         const val TWEET_DECK = "https://tweetdeck.twitter.com"
     }
 
-    private var mWebView: WebView? = null
+    private lateinit var mWebView: WebView
+    private lateinit var chromeClient: TJChromeClient
     private var mFilePathCallback: ValueCallback<Array<Uri>>? = null
     private var mCameraPhotoPath: String? = null
 
@@ -53,22 +54,28 @@ class MainActivity : Activity() {
             }
         }
 
-        mWebView = findViewById<View>(R.id.webView1) as WebView
+        // under API 26 can not call WebView#getWebChromeClient()
+        chromeClient = TJChromeClient(
+                (findViewById(R.id.web_view_frame)),
+                findViewById(R.id.video_view_frame)
+        )
 
-        mWebView!!.webViewClient = TJClient()
-        mWebView!!.webChromeClient = TJChromeClient()
-
-        val settings = mWebView!!.settings
-        settings.javaScriptEnabled = true
-        settings.domStorageEnabled = true
-        settings.loadWithOverviewMode = true
-        settings.useWideViewPort = true
-        settings.setSupportZoom(true)
-        settings.builtInZoomControls = true
-        settings.displayZoomControls = false
+        mWebView = (findViewById<View>(R.id.web_view) as WebView).apply {
+            webViewClient = TJClient()
+            webChromeClient = chromeClient
+            settings.run {
+                javaScriptEnabled = true
+                domStorageEnabled = true
+                loadWithOverviewMode = true
+                useWideViewPort = true
+                setSupportZoom(true)
+                builtInZoomControls = true
+                displayZoomControls = false
+            }
+        }
 
         if (savedInstanceState == null) {
-            mWebView!!.loadUrl(TWEET_DECK)
+            mWebView.loadUrl(TWEET_DECK)
         }
     }
 
@@ -106,23 +113,25 @@ class MainActivity : Activity() {
 
     /* 戻るボタンでブラウザバックするようにする */
     override fun onKeyDown(keyCode: Int, event: KeyEvent): Boolean {
-        if (keyCode == KeyEvent.KEYCODE_BACK && mWebView!!.canGoBack()) {
-            mWebView!!.goBack()
-            return true
-        }
-        return super.onKeyDown(keyCode, event)
+        return if (keyCode == KeyEvent.KEYCODE_BACK) {
+            when {
+                mWebView.canGoBack() -> mWebView.goBack()
+                chromeClient.isFullScreen() -> chromeClient.onHideCustomView()
+            }
+            true
+        } else super.onKeyDown(keyCode, event)
     }
 
     /* WebViewの内容を保持する */
     override fun onSaveInstanceState(outState: Bundle) {
         super.onSaveInstanceState(outState)
-        mWebView!!.saveState(outState)
+        mWebView.saveState(outState)
     }
 
     /* WebViewの保持した内容を戻す */
     override fun onRestoreInstanceState(savedInstanceState: Bundle) {
         super.onRestoreInstanceState(savedInstanceState)
-        mWebView!!.restoreState(savedInstanceState)
+        mWebView.restoreState(savedInstanceState)
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
@@ -154,7 +163,41 @@ class MainActivity : Activity() {
     }
 
     // https://github.com/googlearchive/chromium-webview-samples/blob/master/input-file-example/app/src/main/java/inputfilesample/android/chrome/google/com/inputfilesample/MainFragment.java
-    inner class TJChromeClient : WebChromeClient() {
+    inner class TJChromeClient(
+            private val webViewFrame: FrameLayout,
+            private val videoFrame: FrameLayout
+    ) : WebChromeClient() {
+
+        private var fullScreenContainer: FrameLayout? = null
+        private var customViewCallback: CustomViewCallback? = null
+        private var isFullScreen: Boolean = false
+
+        override fun onShowCustomView(view: View?, callback: CustomViewCallback?) {
+            if (view is FrameLayout) {
+                fullScreenContainer = view
+                fullScreenContainer?.let {
+                    videoFrame.addView(it, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
+                    webViewFrame.visibility = View.INVISIBLE
+                    videoFrame.visibility = View.VISIBLE
+                    customViewCallback = callback
+                    isFullScreen = true
+                }
+            }
+        }
+
+        override fun onHideCustomView() {
+            Log.d("WebChromeClient", "onHideCustomView")
+            customViewCallback?.onCustomViewHidden()
+            customViewCallback = null
+            fullScreenContainer?.let { videoFrame.removeView(it) }
+            fullScreenContainer = null
+            webViewFrame.visibility = View.VISIBLE
+            videoFrame.visibility = View.INVISIBLE
+            isFullScreen = false
+        }
+
+        fun isFullScreen(): Boolean = isFullScreen
+
         override fun onShowFileChooser(
                 webView: WebView, filePathCallback: ValueCallback<Array<Uri>>,
                 fileChooserParams: WebChromeClient.FileChooserParams): Boolean {
@@ -260,7 +303,6 @@ class MainActivity : Activity() {
 
             return super.shouldOverrideUrlLoading(view, request)
         }
-
 
         //        @Override
         //        public void onLoadResource(WebView view, String url) {
