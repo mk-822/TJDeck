@@ -88,14 +88,12 @@ class MainActivity : Activity() {
     }
 
     /* 戻るボタンでブラウザバックするようにする */
-    override fun onKeyDown(keyCode: Int, event: KeyEvent): Boolean {
-        return if (keyCode == KeyEvent.KEYCODE_BACK) {
-            when {
-                mWebView.canGoBack() -> mWebView.goBack()
-                chromeClient.isFullScreen() -> chromeClient.onHideCustomView()
-            }
-            true
-        } else super.onKeyDown(keyCode, event)
+    override fun onBackPressed() {
+        when {
+            mWebView.canGoBack() -> mWebView.goBack()
+            chromeClient.isFullScreen() -> chromeClient.onHideCustomView()
+            else -> super.onBackPressed()
+        }
     }
 
     /* WebViewの内容を保持する */
