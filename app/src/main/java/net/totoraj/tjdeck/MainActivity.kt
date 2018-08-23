@@ -48,11 +48,6 @@ class MainActivity : Activity() {
         setContentView(R.layout.activity_main)
 
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-        window.decorView.setOnSystemUiVisibilityChangeListener { visibility ->
-            if (visibility and View.SYSTEM_UI_FLAG_FULLSCREEN == 0) {
-                hideSystemUI(1000)
-            }
-        }
 
         // under API 26 can not call WebView#getWebChromeClient()
         chromeClient = TJChromeClient(
@@ -77,25 +72,6 @@ class MainActivity : Activity() {
         if (savedInstanceState == null) {
             mWebView.loadUrl(TWEET_DECK)
         }
-    }
-
-    override fun onWindowFocusChanged(hasFocus: Boolean) {
-        super.onWindowFocusChanged(hasFocus)
-        if (hasFocus) {
-            hideSystemUI(0)
-        }
-    }
-
-    private fun hideSystemUI(delayMillis: Int) {
-        val decorView = window.decorView
-        Handler(Looper.getMainLooper()).postDelayed({
-            decorView.systemUiVisibility = (View.SYSTEM_UI_FLAG_IMMERSIVE
-                    or View.SYSTEM_UI_FLAG_LAYOUT_STABLE
-                    or View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
-                    or View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
-                    or View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
-                    or View.SYSTEM_UI_FLAG_FULLSCREEN)
-        }, delayMillis.toLong())
     }
 
     /* アセットからjsファイルを読み込んでStringで返すやつ */
