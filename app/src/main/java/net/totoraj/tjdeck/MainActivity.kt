@@ -6,15 +6,13 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import android.os.Environment
-import android.os.Handler
-import android.os.Looper
 import android.provider.MediaStore
+import android.support.design.widget.NavigationView
+import android.support.v4.view.GravityCompat
+import android.support.v4.widget.DrawerLayout
 import android.text.format.DateFormat
 import android.util.Log
-import android.view.KeyEvent
-import android.view.View
-import android.view.ViewGroup
-import android.view.WindowManager
+import android.view.*
 import android.webkit.ValueCallback
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceRequest
@@ -37,6 +35,7 @@ class MainActivity : Activity() {
         const val TWEET_DECK = "https://tweetdeck.twitter.com"
     }
 
+    private lateinit var drawerLayout: DrawerLayout
     private lateinit var mWebView: WebView
     private lateinit var videoFrame: FrameLayout
     private var mFilePathCallback: ValueCallback<Array<Uri>>? = null
@@ -48,9 +47,19 @@ class MainActivity : Activity() {
         setContentView(R.layout.activity_main)
 
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-        videoFrame = findViewById(R.id.video_view_frame)
 
-        mWebView = (findViewById<View>(R.id.web_view) as WebView).apply {
+        drawerLayout = findViewById(R.id.drawer_layout)
+        (findViewById<NavigationView>(R.id.navigationView)).apply{
+            setNavigationItemSelectedListener {
+                when(it.itemId){
+                    R.id.menu_show_tjdeck_option -> mWebView.evaluateJavascript("tj_deck.showOptionPanel()",null)
+                }
+                drawerLayout.closeDrawer(GravityCompat.START)
+                true
+            }
+        }
+
+        mWebView = (findViewById<WebView>(R.id.web_view)).apply {
             webViewClient = TJClient()
             settings.run {
                 javaScriptEnabled = true
@@ -62,6 +71,7 @@ class MainActivity : Activity() {
                 displayZoomControls = false
             }
         }
+        videoFrame = findViewById(R.id.video_view_frame)
         mWebView.webChromeClient = TJChromeClient(mWebView, videoFrame)
 
         if (savedInstanceState == null) {
@@ -82,9 +92,9 @@ class MainActivity : Activity() {
         return res.substring(0)
     }
 
-    /* 戻るボタンでブラウザバックするようにする */
     override fun onBackPressed() {
         when {
+            drawerLayout.isDrawerOpen(GravityCompat.START) -> drawerLayout.closeDrawer(GravityCompat.START)
             videoFrame.visibility != View.VISIBLE && mWebView.canGoBack() -> mWebView.goBack()
             else -> super.onBackPressed()
         }
@@ -133,7 +143,6 @@ class MainActivity : Activity() {
     override fun onResume() {
         super.onResume()
         if (videoFrame.visibility == View.VISIBLE) hideSystemUi()
-
     }
 
     fun hideSystemUi() {
