@@ -132,7 +132,7 @@ class MainActivity : Activity() {
 
     override fun onResume() {
         super.onResume()
-        if (videoFrame.visibility != View.VISIBLE) hideSystemUi()
+        if (videoFrame.visibility == View.VISIBLE) hideSystemUi()
 
     }
 
