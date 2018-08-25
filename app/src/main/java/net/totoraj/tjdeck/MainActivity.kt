@@ -130,6 +130,25 @@ class MainActivity : Activity() {
         return
     }
 
+    override fun onResume() {
+        super.onResume()
+        if (videoFrame.visibility != View.VISIBLE) hideSystemUi()
+
+    }
+
+    fun hideSystemUi() {
+        window.decorView.systemUiVisibility = (View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
+                or View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+                or View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+                or View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+                or View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+                or View.SYSTEM_UI_FLAG_FULLSCREEN)
+    }
+
+    fun showSystemUi() {
+        window.decorView.systemUiVisibility = (View.SYSTEM_UI_FLAG_LAYOUT_STABLE)
+    }
+
     // https://github.com/googlearchive/chromium-webview-samples/blob/master/input-file-example/app/src/main/java/inputfilesample/android/chrome/google/com/inputfilesample/MainFragment.java
     inner class TJChromeClient(
             private val webView: WebView,
@@ -144,12 +163,7 @@ class MainActivity : Activity() {
 
             customViewCallback = callback
 
-            window.decorView.systemUiVisibility = (View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
-                    or View.SYSTEM_UI_FLAG_LAYOUT_STABLE
-                    or View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
-                    or View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
-                    or View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
-                    or View.SYSTEM_UI_FLAG_FULLSCREEN)
+            hideSystemUi()
 
             if (videoView != null) videoFrame.removeView(videoView)
             videoView = view
@@ -168,7 +182,7 @@ class MainActivity : Activity() {
             customViewCallback?.onCustomViewHidden()
             customViewCallback = null
 
-            window.decorView.systemUiVisibility = (View.SYSTEM_UI_FLAG_LAYOUT_STABLE)
+            showSystemUi()
 
             videoFrame.removeView(videoView)
             videoView = null
