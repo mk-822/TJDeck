@@ -38,7 +38,7 @@ class MainActivity : Activity() {
     }
 
     private lateinit var mWebView: WebView
-    private lateinit var chromeClient: TJChromeClient
+    private lateinit var videoFrame: FrameLayout
     private var mFilePathCallback: ValueCallback<Array<Uri>>? = null
     private var mCameraPhotoPath: String? = null
 
@@ -48,16 +48,10 @@ class MainActivity : Activity() {
         setContentView(R.layout.activity_main)
 
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-
-        // under API 26 can not call WebView#getWebChromeClient()
-        chromeClient = TJChromeClient(
-                (findViewById(R.id.web_view_frame)),
-                findViewById(R.id.video_view_frame)
-        )
+        videoFrame = findViewById(R.id.video_view_frame)
 
         mWebView = (findViewById<View>(R.id.web_view) as WebView).apply {
             webViewClient = TJClient()
-            webChromeClient = chromeClient
             settings.run {
                 javaScriptEnabled = true
                 domStorageEnabled = true
@@ -68,6 +62,7 @@ class MainActivity : Activity() {
                 displayZoomControls = false
             }
         }
+        mWebView.webChromeClient = TJChromeClient(mWebView, videoFrame)
 
         if (savedInstanceState == null) {
             mWebView.loadUrl(TWEET_DECK)
@@ -90,8 +85,7 @@ class MainActivity : Activity() {
     /* 戻るボタンでブラウザバックするようにする */
     override fun onBackPressed() {
         when {
-            mWebView.canGoBack() -> mWebView.goBack()
-            chromeClient.isFullScreen() -> chromeClient.onHideCustomView()
+            videoFrame.visibility != View.VISIBLE && mWebView.canGoBack() -> mWebView.goBack()
             else -> super.onBackPressed()
         }
     }
@@ -138,39 +132,50 @@ class MainActivity : Activity() {
 
     // https://github.com/googlearchive/chromium-webview-samples/blob/master/input-file-example/app/src/main/java/inputfilesample/android/chrome/google/com/inputfilesample/MainFragment.java
     inner class TJChromeClient(
-            private val webViewFrame: FrameLayout,
+            private val webView: WebView,
             private val videoFrame: FrameLayout
     ) : WebChromeClient() {
 
-        private var fullScreenContainer: FrameLayout? = null
         private var customViewCallback: CustomViewCallback? = null
-        private var isFullScreen: Boolean = false
+        private var videoView: View? = null
 
         override fun onShowCustomView(view: View?, callback: CustomViewCallback?) {
-            if (view is FrameLayout) {
-                fullScreenContainer = view
-                fullScreenContainer?.let {
-                    videoFrame.addView(it, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
-                    webViewFrame.visibility = View.INVISIBLE
-                    videoFrame.visibility = View.VISIBLE
-                    customViewCallback = callback
-                    isFullScreen = true
-                }
-            }
+            super.onShowCustomView(view, callback)
+
+            customViewCallback = callback
+
+            window.decorView.systemUiVisibility = (View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
+                    or View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+                    or View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+                    or View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+                    or View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+                    or View.SYSTEM_UI_FLAG_FULLSCREEN)
+
+            if (videoView != null) videoFrame.removeView(videoView)
+            videoView = view
+            videoFrame.addView(
+                    videoView,
+                    ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
+            )
+
+            webView.visibility = View.INVISIBLE
+            videoFrame.visibility = View.VISIBLE
         }
 
         override fun onHideCustomView() {
-            Log.d("WebChromeClient", "onHideCustomView")
+            super.onHideCustomView()
+
             customViewCallback?.onCustomViewHidden()
             customViewCallback = null
-            fullScreenContainer?.let { videoFrame.removeView(it) }
-            fullScreenContainer = null
-            webViewFrame.visibility = View.VISIBLE
-            videoFrame.visibility = View.INVISIBLE
-            isFullScreen = false
-        }
 
-        fun isFullScreen(): Boolean = isFullScreen
+            window.decorView.systemUiVisibility = (View.SYSTEM_UI_FLAG_LAYOUT_STABLE)
+
+            videoFrame.removeView(videoView)
+            videoView = null
+
+            webView.visibility = View.VISIBLE
+            videoFrame.visibility = View.INVISIBLE
+        }
 
         override fun onShowFileChooser(
                 webView: WebView, filePathCallback: ValueCallback<Array<Uri>>,
