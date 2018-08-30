@@ -92,6 +92,29 @@ class MainActivity : Activity() {
         return res.substring(0)
     }
 
+
+    //戻るボタンを長押しでアプリ終了
+    override fun onKeyLongPress(keyCode: Int, event: KeyEvent?): Boolean {
+        if (event?.keyCode == KeyEvent.KEYCODE_BACK) {
+            //アプリ終了
+            this.finish()
+        }
+        return super.onKeyLongPress(keyCode, event)
+    }
+
+    //普通に戻るボタンを押してもアプリを終了させない
+    override fun dispatchKeyEvent(event : KeyEvent?): Boolean {
+        //画面から離れた場合
+        if (event?.action == KeyEvent.ACTION_UP) {
+            //戻るボタンの場合
+            if (event?.action == KeyEvent.KEYCODE_BACK) {
+                //trueを返して戻るのを無効化する
+                return true
+            }
+        }
+        return super.dispatchKeyEvent(event)
+    }
+
     override fun onBackPressed() {
         when {
             drawerLayout.isDrawerOpen(GravityCompat.START) -> drawerLayout.closeDrawer(GravityCompat.START)
@@ -341,6 +364,5 @@ class MainActivity : Activity() {
                 else -> Log.d(TAG, "それ以外です")
             }
         }
-
     }
 }
