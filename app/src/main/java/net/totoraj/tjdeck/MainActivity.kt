@@ -54,7 +54,7 @@ class MainActivity : Activity() {
                 when(it.itemId){
                     R.id.menu_show_tjdeck_option -> mWebView.evaluateJavascript("tj_deck.showOptionPanel()",null)
                 }
-                drawerLayout.closeDrawer(GravityCompat.START)
+                drawerLayout.closeDrawer(GravityCompat.END)
                 true
             }
         }
@@ -94,7 +94,7 @@ class MainActivity : Activity() {
 
     override fun onBackPressed() {
         when {
-            drawerLayout.isDrawerOpen(GravityCompat.START) -> drawerLayout.closeDrawer(GravityCompat.START)
+            drawerLayout.isDrawerOpen(GravityCompat.START) -> drawerLayout.closeDrawer(GravityCompat.END)
             videoFrame.visibility != View.VISIBLE && mWebView.canGoBack() -> mWebView.goBack()
             else -> super.onBackPressed()
         }
