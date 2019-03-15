@@ -94,7 +94,7 @@ class MainActivity : Activity() {
 
     override fun onBackPressed() {
         when {
-            drawerLayout.isDrawerOpen(GravityCompat.START) -> drawerLayout.closeDrawer(GravityCompat.END)
+            drawerLayout.isDrawerOpen(GravityCompat.END) -> drawerLayout.closeDrawer(GravityCompat.END)
             videoFrame.visibility != View.VISIBLE && mWebView.canGoBack() -> mWebView.goBack()
             else -> super.onBackPressed()
         }
