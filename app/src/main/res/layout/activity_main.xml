@@ -18,10 +18,21 @@
         android:layout_height="match_parent"
         android:visibility="invisible" />
 
+    <FrameLayout
+        android:id="@+id/container_account_linkage_settings"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
+
     <android.support.design.widget.NavigationView
         android:id="@+id/navigationView"
         android:layout_width="240dp"
         android:layout_height="match_parent"
         android:layout_gravity="end"
-        app:menu="@menu/drawer_menu" />
+        app:menu="@menu/drawer_menu">
+
+        <net.totoraj.tjdeck.TweetMenuView
+            android:layout_width="match_parent"
+            android:layout_height="200dp"
+            android:layout_gravity="bottom" />
+    </android.support.design.widget.NavigationView>
 </android.support.v4.widget.DrawerLayout>

@@ -1,4 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <menu xmlns:android="http://schemas.android.com/apk/res/android">
-    <item android:title="TJDeckの設定を開く" android:id="@+id/menu_show_tjdeck_option" />
+    <item
+        android:id="@+id/menu_show_tjdeck_option"
+        android:title="TJDeckの設定を開く" />
+    <item
+        android:id="@+id/menu_post_only_linked_option"
+        android:title="投稿用Twitter連携設定を開く" />
 </menu>

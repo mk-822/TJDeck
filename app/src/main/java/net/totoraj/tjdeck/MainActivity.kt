@@ -10,24 +10,22 @@ import android.provider.MediaStore
 import android.support.design.widget.NavigationView
 import android.support.v4.view.GravityCompat
 import android.support.v4.widget.DrawerLayout
+import android.support.v7.app.AppCompatActivity
 import android.text.format.DateFormat
 import android.util.Log
-import android.view.*
-import android.webkit.ValueCallback
-import android.webkit.WebChromeClient
-import android.webkit.WebResourceRequest
-import android.webkit.WebView
-import android.webkit.WebViewClient
+import android.view.View
+import android.view.ViewGroup
+import android.view.WindowManager
+import android.webkit.*
 import android.widget.FrameLayout
-
 import java.io.BufferedReader
 import java.io.File
 import java.io.IOException
 import java.io.InputStreamReader
-import java.util.Date
+import java.util.*
 import java.util.regex.Pattern
 
-class MainActivity : Activity() {
+class MainActivity : AppCompatActivity() {
 
     companion object {
         const val TAG = "TJDeck"
@@ -38,6 +36,10 @@ class MainActivity : Activity() {
     private lateinit var drawerLayout: DrawerLayout
     private lateinit var mWebView: WebView
     private lateinit var videoFrame: FrameLayout
+
+    private lateinit var viewModel: AccountLinkageSettingsViewModel
+    private lateinit var accountLinkageSettings: AccountLinkageSettingsFragment
+
     private var mFilePathCallback: ValueCallback<Array<Uri>>? = null
     private var mCameraPhotoPath: String? = null
 
@@ -47,12 +49,40 @@ class MainActivity : Activity() {
         setContentView(R.layout.activity_main)
 
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        viewModel = AccountLinkageSettingsViewModel.getModel(this).apply {
+            checkIsLinked()
+        }
+
+        val fragmentManager = supportFragmentManager
+        accountLinkageSettings = AccountLinkageSettingsFragment.newInstance()
+
+        fragmentManager.beginTransaction().run {
+            replace(R.id.container_account_linkage_settings, accountLinkageSettings)
+            hide(accountLinkageSettings)
+            commit()
+        }
+
+        findViewById<FrameLayout>(R.id.container_account_linkage_settings)
 
         drawerLayout = findViewById(R.id.drawer_layout)
-        (findViewById<NavigationView>(R.id.navigationView)).apply{
+        (findViewById<NavigationView>(R.id.navigationView)).run {
+            findViewById<View>(R.id.container_tweet).run {
+                viewModel.observeIsLinked(this@MainActivity) { isVisible ->
+                    isVisible?.let {
+                        visibility = if (isVisible) View.VISIBLE else View.GONE
+                    }
+                }
+            }
+
             setNavigationItemSelectedListener {
-                when(it.itemId){
-                    R.id.menu_show_tjdeck_option -> mWebView.evaluateJavascript("tj_deck.showOptionPanel()",null)
+                when (it.itemId) {
+                    R.id.menu_show_tjdeck_option -> mWebView.evaluateJavascript("tj_deck.showOptionPanel()", null)
+                    R.id.menu_post_only_linked_option -> {
+                        fragmentManager.beginTransaction().run {
+                            show(accountLinkageSettings)
+                            commit()
+                        }
+                    }
                 }
                 drawerLayout.closeDrawer(GravityCompat.END)
                 true
@@ -94,6 +124,12 @@ class MainActivity : Activity() {
 
     override fun onBackPressed() {
         when {
+            accountLinkageSettings.isVisible -> {
+                supportFragmentManager.beginTransaction().run {
+                    hide(accountLinkageSettings)
+                    commit()
+                }
+            }
             drawerLayout.isDrawerOpen(GravityCompat.END) -> drawerLayout.closeDrawer(GravityCompat.END)
             videoFrame.visibility != View.VISIBLE && mWebView.canGoBack() -> mWebView.goBack()
             else -> super.onBackPressed()
