@@ -22,7 +22,7 @@ class AccountLinkageSettingsViewModel : ViewModel() {
         GlobalScope.launch(Dispatchers.IO) {
             // todo call requestToken api
             // todo if success convert callback_url to uri
-            val uri = Uri.EMPTY
+            val uri = Uri.parse("https://google.com")
             callbackUrl.postValue(uri)
         }
     }
