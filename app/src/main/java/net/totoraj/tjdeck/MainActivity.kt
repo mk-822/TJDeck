@@ -66,11 +66,9 @@ class MainActivity : AppCompatActivity() {
 
         drawerLayout = findViewById(R.id.drawer_layout)
         (findViewById<NavigationView>(R.id.navigationView)).run {
-            findViewById<View>(R.id.container_tweet).run {
-                viewModel.observeIsLinked(this@MainActivity) { isVisible ->
-                    isVisible?.let {
-                        visibility = if (isVisible) View.VISIBLE else View.GONE
-                    }
+            findViewById<View>(R.id.editor_tweet).run {
+                viewModel.observeIsLinked(this@MainActivity) { isLinked ->
+                    isLinked?.let { isEnabled = isLinked }
                 }
             }
 
