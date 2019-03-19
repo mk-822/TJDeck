@@ -1,11 +1,11 @@
 package net.totoraj.tjdeck
 
-import android.arch.lifecycle.MutableLiveData
-import android.arch.lifecycle.Observer
-import android.arch.lifecycle.ViewModel;
-import android.arch.lifecycle.ViewModelProviders
+import androidx.lifecycle.MutableLiveData
+import androidx.lifecycle.Observer
+import androidx.lifecycle.ViewModel;
+import androidx.lifecycle.ViewModelProviders
 import android.net.Uri
-import android.support.v4.app.FragmentActivity
+import androidx.fragment.app.FragmentActivity
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
