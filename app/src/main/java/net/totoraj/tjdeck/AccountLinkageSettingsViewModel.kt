@@ -1,53 +1,72 @@
 package net.totoraj.tjdeck
 
+import android.media.audiofx.BassBoost
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.Observer
-import androidx.lifecycle.ViewModel;
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProviders
 import android.net.Uri
+import android.util.Log
+import androidx.fragment.app.Fragment
 import androidx.fragment.app.FragmentActivity
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
+import net.totoraj.tjdeck.model.database.entity.AccountEntity
+import twitter4j.auth.AccessToken
+import twitter4j.auth.RequestToken
 
 class AccountLinkageSettingsViewModel : ViewModel() {
     companion object {
         fun getModel(owner: FragmentActivity) = ViewModelProviders.of(owner).get(AccountLinkageSettingsViewModel::class.java)
     }
 
-    private val callbackUrl = MutableLiveData<Uri>()
-    private val isPostOnlyAccountLinked = MutableLiveData<Boolean>()
+    private val callbackUrl = MutableLiveData<String>()
+    private val hasToken = MutableLiveData<Boolean>()
+    private val accounts = MutableLiveData<List<AccountEntity>>()
 
-    fun getCallbackUrl() {
+    fun observeCallbackUrl(owner: FragmentActivity, callback: (data: String?) -> Unit) =
+            callbackUrl.observe(owner, Observer<String> { data -> callback.invoke(data) })
+
+    fun observeCallbackUrl(owner: Fragment, callback: (data: String?) -> Unit) =
+            callbackUrl.observe(owner, Observer<String> { data -> callback.invoke(data) })
+
+    fun observeHasToken(owner: FragmentActivity, callback: (data: Boolean?) -> Unit) =
+            hasToken.observe(owner, Observer<Boolean> { data -> callback.invoke(data) })
+
+    fun observeHasToken(owner: Fragment, callback: (data: Boolean?) -> Unit) =
+            hasToken.observe(owner, Observer<Boolean> { data -> callback.invoke(data) })
+
+    fun observeLinkedAccounts(owner: FragmentActivity, callback: (data: List<AccountEntity>?) -> Unit) =
+            accounts.observe(owner, Observer<List<AccountEntity>> { data -> callback.invoke(data) })
+
+    fun observeLinkedAccounts(owner: Fragment, callback: (data: List<AccountEntity>?) -> Unit) =
+            accounts.observe(owner, Observer<List<AccountEntity>> { data -> callback.invoke(data) })
+
+    fun getCallbackUrl(consumerKey: String, consumerSecret: String) {
+        TwitterRepository.Consumer.key = consumerKey
+        TwitterRepository.Consumer.secret = consumerSecret
+
         GlobalScope.launch(Dispatchers.IO) {
-            // todo call requestToken api
-            // todo if success convert callback_url to uri
-            val uri = Uri.parse("https://google.com")
-            callbackUrl.postValue(uri)
+            TwitterRepository.Token.getRequestToken { callbackUrl.postValue(it) }
         }
     }
 
-    fun observeCallbackUrl(owner: FragmentActivity, callee: (data: Uri?) -> Unit) {
-        callbackUrl.observe(owner, Observer<Uri> { data -> callee.invoke(data) })
-    }
-
-    fun getAccessToken() {
+    fun getAccessToken(pin: String) {
         GlobalScope.launch(Dispatchers.IO) {
-            // todo call get authToken api
-            // todo if success save token in pref
-            isPostOnlyAccountLinked.postValue(true)
+            TwitterRepository.Token.getAccessToken(pin) { hasToken.postValue(it) }
         }
     }
 
-    fun observeIsLinked(owner: FragmentActivity, callee: (data: Boolean?) -> Unit) {
-        isPostOnlyAccountLinked.observe(owner, Observer<Boolean> { data -> callee.invoke(data) })
+    fun loadAccessToken() {
+        GlobalScope.launch(Dispatchers.IO) {
+            TwitterRepository.Token.loadAccessToken()
+        }
     }
 
-    fun checkIsLinked() {
-        // todo get authToken from pref
-        // authToken?.let{
-        // todo verifyCredentials(Twitter4j API) and if postValue(result verifyCredentials)
-        isPostOnlyAccountLinked.postValue(true)
-        // } ?: isPostOnlyAccountLinked.postValue(false)
+    fun refreshLinkedAccounts() {
+        GlobalScope.launch(Dispatchers.IO) {
+            accounts.postValue(TwitterRepository.Account.getAll())
+        }
     }
 }

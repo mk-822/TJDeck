@@ -7,10 +7,6 @@ import android.net.Uri
 import android.os.Bundle
 import android.os.Environment
 import android.provider.MediaStore
-import com.google.android.material.navigation.NavigationView
-import androidx.core.view.GravityCompat
-import androidx.drawerlayout.widget.DrawerLayout
-import androidx.appcompat.app.AppCompatActivity
 import android.text.format.DateFormat
 import android.util.Log
 import android.view.View
@@ -18,6 +14,14 @@ import android.view.ViewGroup
 import android.view.WindowManager
 import android.webkit.*
 import android.widget.FrameLayout
+import androidx.activity.OnBackPressedCallback
+import androidx.appcompat.app.AppCompatActivity
+import androidx.core.view.GravityCompat
+import androidx.drawerlayout.widget.DrawerLayout
+import com.google.android.material.navigation.NavigationView
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
 import java.io.BufferedReader
 import java.io.File
 import java.io.IOException
@@ -25,7 +29,7 @@ import java.io.InputStreamReader
 import java.util.*
 import java.util.regex.Pattern
 
-class MainActivity : AppCompatActivity() {
+class MainActivity : AppCompatActivity(), OnBackPressedCallback {
 
     companion object {
         const val TAG = "TJDeck"
@@ -43,64 +47,25 @@ class MainActivity : AppCompatActivity() {
     private var mFilePathCallback: ValueCallback<Array<Uri>>? = null
     private var mCameraPhotoPath: String? = null
 
-    @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-        viewModel = AccountLinkageSettingsViewModel.getModel(this).apply {
-            checkIsLinked()
-        }
+        viewModel = AccountLinkageSettingsViewModel.getModel(this)
+        addOnBackPressedCallback(this, this)
 
-        val fragmentManager = supportFragmentManager
+        drawerLayout = findViewById(R.id.drawer_layout)
         accountLinkageSettings = AccountLinkageSettingsFragment.newInstance()
 
-        fragmentManager.beginTransaction().run {
+        supportFragmentManager.beginTransaction().run {
             replace(R.id.container_account_linkage_settings, accountLinkageSettings)
             hide(accountLinkageSettings)
             commit()
         }
 
-        findViewById<FrameLayout>(R.id.container_account_linkage_settings)
-
-        drawerLayout = findViewById(R.id.drawer_layout)
-        (findViewById<NavigationView>(R.id.navigationView)).run {
-            findViewById<View>(R.id.editor_tweet).run {
-                viewModel.observeIsLinked(this@MainActivity) { isLinked ->
-                    isLinked?.let { isEnabled = isLinked }
-                }
-            }
-
-            setNavigationItemSelectedListener {
-                when (it.itemId) {
-                    R.id.menu_show_tjdeck_option -> mWebView.evaluateJavascript("tj_deck.showOptionPanel()", null)
-                    R.id.menu_post_only_linked_option -> {
-                        fragmentManager.beginTransaction().run {
-                            show(accountLinkageSettings)
-                            commit()
-                        }
-                    }
-                }
-                drawerLayout.closeDrawer(GravityCompat.END)
-                true
-            }
-        }
-
-        mWebView = (findViewById<WebView>(R.id.web_view)).apply {
-            webViewClient = TJClient()
-            settings.run {
-                javaScriptEnabled = true
-                domStorageEnabled = true
-                loadWithOverviewMode = true
-                useWideViewPort = true
-                setSupportZoom(true)
-                builtInZoomControls = true
-                displayZoomControls = false
-            }
-        }
-        videoFrame = findViewById(R.id.video_view_frame)
-        mWebView.webChromeClient = TJChromeClient(mWebView, videoFrame)
+        initDrawer()
+        initWebView()
 
         if (savedInstanceState == null) {
             mWebView.loadUrl(TWEET_DECK)
@@ -120,17 +85,17 @@ class MainActivity : AppCompatActivity() {
         return res.substring(0)
     }
 
-    override fun onBackPressed() {
-        when {
-            accountLinkageSettings.isVisible -> {
-                supportFragmentManager.beginTransaction().run {
-                    hide(accountLinkageSettings)
-                    commit()
-                }
+    override fun handleOnBackPressed(): Boolean {
+        return when {
+            drawerLayout.isDrawerOpen(GravityCompat.END) -> {
+                drawerLayout.closeDrawer(GravityCompat.END)
+                true
             }
-            drawerLayout.isDrawerOpen(GravityCompat.END) -> drawerLayout.closeDrawer(GravityCompat.END)
-            videoFrame.visibility != View.VISIBLE && mWebView.canGoBack() -> mWebView.goBack()
-            else -> super.onBackPressed()
+            videoFrame.visibility != View.VISIBLE && mWebView.canGoBack() -> {
+                mWebView.goBack()
+                true
+            }
+            else -> false
         }
     }
 
@@ -176,6 +141,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
+
         if (videoFrame.visibility == View.VISIBLE) hideSystemUi()
     }
 
@@ -191,6 +157,53 @@ class MainActivity : AppCompatActivity() {
     fun showSystemUi() {
         window.decorView.systemUiVisibility = (View.SYSTEM_UI_FLAG_LAYOUT_STABLE)
     }
+
+    private fun initDrawer() {
+        drawerLayout.findViewById<NavigationView>(R.id.navigationView).run {
+            viewModel.observeLinkedAccounts(this@MainActivity) { accounts ->
+                accounts?.let {
+                    if (accounts.isNotEmpty()) {
+                        findViewById<View>(R.id.editor_tweet).isEnabled = true
+                    }
+                }
+            }
+
+            setNavigationItemSelectedListener {
+                when (it.itemId) {
+                    R.id.menu_show_tjdeck_option -> mWebView.evaluateJavascript("tj_deck.showOptionPanel()", null)
+                    R.id.menu_post_only_linked_option -> {
+                        supportFragmentManager.beginTransaction().run {
+                            show(accountLinkageSettings)
+                            commit()
+                        }
+                    }
+                }
+                drawerLayout.closeDrawer(GravityCompat.END)
+                true
+            }
+        }
+
+        viewModel.refreshLinkedAccounts()
+    }
+
+    @SuppressLint("SetJavaScriptEnabled")
+    private fun initWebView() {
+        mWebView = findViewById<WebView>(R.id.web_view).apply {
+            webViewClient = TJClient()
+            settings.run {
+                javaScriptEnabled = true
+                domStorageEnabled = true
+                loadWithOverviewMode = true
+                useWideViewPort = true
+                setSupportZoom(true)
+                builtInZoomControls = true
+                displayZoomControls = false
+            }
+        }
+        videoFrame = findViewById(R.id.video_view_frame)
+        mWebView.webChromeClient = TJChromeClient(mWebView, videoFrame)
+    }
+
 
     // https://github.com/googlearchive/chromium-webview-samples/blob/master/input-file-example/app/src/main/java/inputfilesample/android/chrome/google/com/inputfilesample/MainFragment.java
     inner class TJChromeClient(
@@ -235,8 +248,10 @@ class MainActivity : AppCompatActivity() {
         }
 
         override fun onShowFileChooser(
-                webView: WebView, filePathCallback: ValueCallback<Array<Uri>>,
-                fileChooserParams: WebChromeClient.FileChooserParams): Boolean {
+                webView: WebView,
+                filePathCallback: ValueCallback<Array<Uri>>,
+                fileChooserParams: WebChromeClient.FileChooserParams
+        ): Boolean {
             if (mFilePathCallback != null) {
                 mFilePathCallback!!.onReceiveValue(null)
             }
@@ -292,7 +307,6 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-
     /* WebViewのクライアント */
     inner class TJClient : WebViewClient() {
         private val regexDeck = "^https://tweetdeck\\.twitter\\.com.*$"
@@ -339,15 +353,6 @@ class MainActivity : AppCompatActivity() {
 
             return super.shouldOverrideUrlLoading(view, request)
         }
-
-        //        @Override
-        //        public void onLoadResource(WebView view, String url) {
-        //            Log.d(TAG, "onLoadResource: " + url);
-        //        }
-        //        @Override
-        //        public void onReceivedSslError(WebView view, SslErrorHandler handler, SslError error) {
-        //            handler.proceed();
-        //        }
 
         /* tj-deck.jsを実行する */
         private fun runTJDeckScript(view: WebView, url: String) {

@@ -1,7 +1,6 @@
 package net.totoraj.tjdeck
 
 import android.content.Context
-import androidx.constraintlayout.widget.ConstraintLayout
 import android.text.Editable
 import android.text.TextWatcher
 import android.util.AttributeSet
@@ -9,6 +8,11 @@ import android.widget.EditText
 import android.widget.ProgressBar
 import android.widget.TextView
 import android.widget.Toast
+import androidx.constraintlayout.widget.ConstraintLayout
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
+import twitter4j.TwitterException
 import kotlin.math.floor
 
 class TweetMenuView : ConstraintLayout {
@@ -27,10 +31,12 @@ class TweetMenuView : ConstraintLayout {
 
         tweetButton.run {
             setOnClickListener {
-                if (isEnabled) {
-                    // todo call post api
-                    Toast.makeText(context, "post:${tweetEdit.editableText}", Toast.LENGTH_SHORT).show()
-                    tweetEdit.editableText.clear()
+                val tweet = tweetEdit.editableText.toString()
+                tweetEdit.editableText.clear()
+                GlobalScope.launch(Dispatchers.IO) {
+                    TwitterRepository.tweet(tweet) { exception ->
+                        exception?.let { tweetCallback(exception) }
+                    }
                 }
             }
         }
@@ -54,6 +60,17 @@ class TweetMenuView : ConstraintLayout {
                 }
 
             })
+        }
+    }
+
+    private fun tweetCallback(exception: Exception) {
+        val message = when (exception) {
+            is TwitterException -> exception.errorMessage
+            else -> "unexpected error occurred"
+        }
+
+        GlobalScope.launch(Dispatchers.Main) {
+            Toast.makeText(context, message, Toast.LENGTH_LONG).show()
         }
     }
 }
