@@ -7,4 +7,5 @@
     <color name="white">#ffffff</color>
     <color name="gray">#a2a2a2</color>
     <color name="grayFilteredTwitterMain">#366d97</color>
+    <color name="blackOpacity50">#88000000</color>
 </resources>

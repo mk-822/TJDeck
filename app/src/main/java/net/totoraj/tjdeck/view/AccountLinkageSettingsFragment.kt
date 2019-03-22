@@ -30,6 +30,7 @@ class AccountLinkageSettingsFragment : Fragment(), OnBackPressedCallback {
     private lateinit var mActivity: FragmentActivity
     private lateinit var viewModel: TwitterViewModel
     private var isCancelable = true
+    private var loadingView: View? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -44,14 +45,10 @@ class AccountLinkageSettingsFragment : Fragment(), OnBackPressedCallback {
                     it ?: return@observeThrowable
 
                     isCancelable = true
+                    dismissLoading()
                     when (it.second) {
-                        is RequestTokenException -> {
-                            resetViews()
-                        }
-                        is AccessTokenException -> {
-                            isCancelable = true
-                            resetGetAuthTokenViews()
-                        }
+                        is RequestTokenException -> resetViews()
+                        is AccessTokenException -> resetGetAuthTokenViews()
                     }
                 }
             }
@@ -86,6 +83,10 @@ class AccountLinkageSettingsFragment : Fragment(), OnBackPressedCallback {
             // 透過抑止
             setOnTouchListener { _, _ -> true }
 
+            loadingView = findViewById<View>(R.id.loading).apply {
+                setOnTouchListener { _, _ -> true }
+            }
+
             findViewById<ImageView>(R.id.button_close).run {
                 setOnClickListener { handleOnBackPressed() }
             }
@@ -106,6 +107,7 @@ class AccountLinkageSettingsFragment : Fragment(), OnBackPressedCallback {
                 isEnabled = !(inputKey.isEnabled && inputSecret.isEnabled)
                 setOnClickListener {
                     isCancelable = false
+                    showLoading()
                     viewModel.getRequestToken(inputKey.editableText.toString(), inputSecret.editableText.toString())
                 }
             }
@@ -114,6 +116,7 @@ class AccountLinkageSettingsFragment : Fragment(), OnBackPressedCallback {
                 urlString ?: return@observeCallbackUrl
 
                 isCancelable = true
+                dismissLoading()
                 startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(urlString)))
                 inputPin.isEnabled = true
             }
@@ -121,6 +124,7 @@ class AccountLinkageSettingsFragment : Fragment(), OnBackPressedCallback {
             val linkButton = findViewById<TextView>(R.id.button_account_link).apply {
                 setOnClickListener {
                     isCancelable = false
+                    showLoading()
                     viewModel.getAccessToken(inputPin.editableText.toString())
                 }
             }
@@ -129,6 +133,7 @@ class AccountLinkageSettingsFragment : Fragment(), OnBackPressedCallback {
                 accessToken ?: return@observeAccessToken
 
                 isCancelable = true
+                dismissLoading()
                 Toast.makeText(mActivity, "linked: ${accessToken.screenName}", Toast.LENGTH_LONG).show()
                 resetGetAuthTokenViews()
                 viewModel.refreshLinkedAccounts()
@@ -209,5 +214,13 @@ class AccountLinkageSettingsFragment : Fragment(), OnBackPressedCallback {
 
             findViewById<TextView>(R.id.button_account_link).isEnabled = false
         }
+    }
+
+    private fun showLoading() {
+        loadingView?.visibility = View.VISIBLE
+    }
+
+    private fun dismissLoading() {
+        loadingView?.visibility = View.GONE
     }
 }
