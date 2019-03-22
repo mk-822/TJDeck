@@ -6,13 +6,13 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import net.totoraj.tjdeck.model.database.MyDatabase
-import twitter4j.Twitter
+import net.totoraj.tjdeck.model.repository.TwitterRepository
 import twitter4j.TwitterFactory
 
 class MyApplication : Application() {
     companion object {
-        private var appContext: Context? = null
-        fun getAppContext(): Context = appContext!!
+        private lateinit var appContext: Context
+        fun getAppContext(): Context = appContext
     }
 
     override fun onCreate() {
@@ -22,8 +22,7 @@ class MyApplication : Application() {
         val twitter = TwitterFactory.getSingleton()
 
         MyDatabase.createDatabase(applicationContext)
-        TwitterRepository.setContext(applicationContext)
-        TwitterRepository.setTwitter(twitter)
+        TwitterRepository.init(applicationContext, twitter)
 
         if (TwitterRepository.Account.isLinked) {
             TwitterRepository.Consumer.init()

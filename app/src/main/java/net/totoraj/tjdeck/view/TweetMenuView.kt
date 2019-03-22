@@ -1,4 +1,4 @@
-package net.totoraj.tjdeck
+package net.totoraj.tjdeck.view
 
 import android.content.Context
 import android.text.Editable
@@ -7,12 +7,10 @@ import android.util.AttributeSet
 import android.widget.EditText
 import android.widget.ProgressBar
 import android.widget.TextView
-import android.widget.Toast
 import androidx.constraintlayout.widget.ConstraintLayout
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.GlobalScope
-import kotlinx.coroutines.launch
-import twitter4j.TwitterException
+import androidx.fragment.app.FragmentActivity
+import net.totoraj.tjdeck.R
+import net.totoraj.tjdeck.viewmodel.TwitterViewModel
 import kotlin.math.floor
 
 class TweetMenuView : ConstraintLayout {
@@ -25,19 +23,27 @@ class TweetMenuView : ConstraintLayout {
 
     private fun init() {
         inflate(context, R.layout.layout_tweet_input, this)
+
         val tweetEdit = findViewById<EditText>(R.id.editor_tweet)
         val inputCharsIndicator = findViewById<ProgressBar>(R.id.indicator_input_chars)
         val tweetButton = findViewById<TextView>(R.id.button_tweet)
+
+        val lifeCycleOwner = context as FragmentActivity
+        val viewModel = TwitterViewModel.getModel(lifeCycleOwner).apply {
+            observeLinkedAccounts(lifeCycleOwner) { accounts ->
+                accounts ?: return@observeLinkedAccounts
+
+                if (accounts.isNotEmpty()) {
+                    // todo adapt account icon list
+                }
+            }
+        }
 
         tweetButton.run {
             setOnClickListener {
                 val tweet = tweetEdit.editableText.toString()
                 tweetEdit.editableText.clear()
-                GlobalScope.launch(Dispatchers.IO) {
-                    TwitterRepository.tweet(tweet) { exception ->
-                        exception?.let { tweetCallback(exception) }
-                    }
-                }
+                viewModel.tweet(tweet)
             }
         }
 
@@ -60,17 +66,6 @@ class TweetMenuView : ConstraintLayout {
                 }
 
             })
-        }
-    }
-
-    private fun tweetCallback(exception: Exception) {
-        val message = when (exception) {
-            is TwitterException -> exception.errorMessage
-            else -> "unexpected error occurred"
-        }
-
-        GlobalScope.launch(Dispatchers.Main) {
-            Toast.makeText(context, message, Toast.LENGTH_LONG).show()
         }
     }
 }

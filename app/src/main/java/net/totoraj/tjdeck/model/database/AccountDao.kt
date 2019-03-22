@@ -13,13 +13,13 @@ interface AccountDao {
     suspend fun upsert(entities: List<AccountEntity>)
 
     @Query("SELECT * FROM AccountEntity")
-    suspend fun findAll(): MutableList<AccountEntity>
+    suspend fun findAll(): List<AccountEntity>
 
     @Query("SELECT * FROM AccountEntity WHERE isDefaultUser = 1")
-    suspend fun findDefaultAccount(): MutableList<AccountEntity>
+    suspend fun findDefaultAccount(): List<AccountEntity>
 
     @Query("SELECT * FROM AccountEntity WHERE userId = :userId")
-    suspend fun findByUserId(userId: String): MutableList<AccountEntity>
+    suspend fun findByUserId(userId: String): List<AccountEntity>
 
     @Query("DELETE FROM AccountEntity")
     suspend fun deleteAll()

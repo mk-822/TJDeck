@@ -1,11 +1,10 @@
-package net.totoraj.tjdeck
+package net.totoraj.tjdeck.model.repository
 
 import android.content.Context
-import android.net.Uri
-import android.util.Log
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import net.totoraj.tjdeck.model.database.MyDatabase
 import net.totoraj.tjdeck.model.database.entity.AccountEntity
-import twitter4j.Status
 import twitter4j.Twitter
 import twitter4j.auth.AccessToken
 import twitter4j.auth.RequestToken
@@ -13,16 +12,13 @@ import twitter4j.auth.RequestToken
 class TwitterRepository {
     companion object {
         private lateinit var appContext: Context
-        fun setContext(context: Context) {
-            appContext = context
-        }
-
-        private val db = MyDatabase.getDatabase()
-
         private lateinit var twitter: Twitter
-        fun getTwitter() = twitter
-        fun setTwitter(twitter: Twitter) {
-            this.twitter = twitter
+        private lateinit var db: MyDatabase
+
+        fun init(context: Context, twitter: Twitter) {
+            appContext = context
+            Companion.twitter = twitter
+            db = MyDatabase.getDatabase()
         }
 
         fun getString(name: String, key: String, default: String = ""): String =
@@ -37,17 +33,14 @@ class TwitterRepository {
         fun setBoolean(name: String, key: String, value: Boolean) =
                 appContext.getSharedPreferences(name, Context.MODE_PRIVATE).edit().putBoolean(key, value).apply()
 
-        suspend fun tweet(s: String, callback: (exception: Exception?) -> Unit) {
-            val exception = try {
+        suspend fun tweet(s: String) = withContext(Dispatchers.IO) {
+            try {
                 twitter.updateStatus(s)
-                null
+                Result.success("tweet: $s")
             } catch (e: Exception) {
-                Log.e("onTweet", "error occurred", e)
-                e
+                Result.failure<Exception>(e)
             }
-            callback.invoke(exception)
         }
-
     }
 
     class Consumer {
@@ -65,7 +58,7 @@ class TwitterRepository {
             var secret: String = getString(prefName, keyConsumerSecret)
 
             fun init() {
-                twitter.setOAuthConsumer(Consumer.key, Consumer.secret)
+                twitter.setOAuthConsumer(key, secret)
             }
 
             fun save() {
@@ -80,37 +73,36 @@ class TwitterRepository {
         companion object {
             private lateinit var requestToken: RequestToken
 
-            suspend fun getRequestToken(callback: (urlString: String) -> Unit) {
-                if (!Consumer.isRegistered) Consumer.init()
-                twitter.oAuthAccessToken = null
-
-                val urlString = try {
+            suspend fun getRequestToken() = withContext(Dispatchers.IO) {
+                try {
+                    if (!Consumer.isRegistered) Consumer.init()
+                    twitter.oAuthAccessToken = null
                     requestToken = twitter.oAuthRequestToken
-                    requestToken.authorizationURL
+                    Result.success(requestToken.authorizationURL!!)
                 } catch (e: Exception) {
-                    Log.e("onGetRequestToken", "error occurred", e)
-                    ""
+                    Result.failure<Exception>(e)
                 }
-
-                callback.invoke(urlString)
             }
 
-            suspend fun getAccessToken(pin: String, callback: (hasToken: Boolean) -> Unit) {
-                val hasToken = try {
+            suspend fun getAccessToken(pin: String) = withContext(Dispatchers.IO) {
+                try {
                     val accessToken = twitter.getOAuthAccessToken(requestToken, pin)
                     Account.add(accessToken)
                     if (!Consumer.isRegistered) Consumer.save()
-                    true
+                    Result.success(accessToken)
                 } catch (e: Exception) {
-                    Log.e("onGetAccessToken", "error occurred", e)
-                    false
+                    Result.failure<Exception>(e)
                 }
-
-                callback.invoke(hasToken)
             }
 
-            suspend fun loadAccessToken() {
-                twitter.oAuthAccessToken = Account.getDefault()?.let { AccessToken(it.token, it.tokenSecret) }
+            suspend fun loadAccessToken() = withContext(Dispatchers.IO) {
+                try {
+                    val accessToken = Account.getDefault()?.let { AccessToken(it.token, it.tokenSecret) }
+                    twitter.oAuthAccessToken = accessToken
+                    Result.success(accessToken)
+                } catch (e: Exception) {
+                    Result.failure<Exception>(e)
+                }
             }
         }
     }
@@ -124,27 +116,34 @@ class TwitterRepository {
                 get() = getBoolean(prefName, keyIsLinked)
                 set(value) = setBoolean(prefName, keyIsLinked, value)
 
-            suspend fun getAll() = db.accountDao.findAll()
+            suspend fun getAll() = withContext(Dispatchers.IO) {
+                try {
+                    val accounts = db.accountDao.findAll()
+                    Result.success(accounts)
+                } catch (e: Exception) {
+                    Result.failure<Exception>(e)
+                }
+            }
 
-            suspend fun getDefault(): AccountEntity? {
-                return try {
+            suspend fun getDefault(): AccountEntity? = withContext(Dispatchers.IO) {
+                try {
                     db.accountDao.findDefaultAccount().first()
                 } catch (e: Exception) {
                     null
                 }
             }
 
-            suspend fun setDefault(userId: String) {
+            suspend fun setDefault(userId: String) = withContext(Dispatchers.IO) {
                 setDefault(db.accountDao.findByUserId(userId).first().apply { isDefaultUser = true })
             }
 
-            private suspend fun setDefault(newDefaultAccount: AccountEntity) {
+            private suspend fun setDefault(newDefaultAccount: AccountEntity) = withContext(Dispatchers.IO) {
                 newDefaultAccount.isDefaultUser = true
                 val prevDefaultAccount = getDefault()?.apply { isDefaultUser = false }
                 upsert(newDefaultAccount, prevDefaultAccount)
             }
 
-            suspend fun add(accessToken: AccessToken) {
+            suspend fun add(accessToken: AccessToken) = withContext(Dispatchers.IO) {
                 val userId = accessToken.userId
                 val newAccount = AccountEntity(userId).apply {
                     token = accessToken.token
@@ -156,17 +155,17 @@ class TwitterRepository {
                 setDefault(newAccount)
             }
 
-            private suspend fun upsert(newAccount: AccountEntity, prevDefaultAccount: AccountEntity?) {
-                db.beginTransaction()
-                try {
-                    prevDefaultAccount?.let { db.accountDao.upsert(listOf(it)) }
-                    db.accountDao.upsert(listOf(newAccount))
-                    db.setTransactionSuccessful()
-                } finally {
-                    db.endTransaction()
-                }
-            }
+            private suspend fun upsert(newAccount: AccountEntity, prevDefaultAccount: AccountEntity?) =
+                    withContext(Dispatchers.IO) {
+                        db.beginTransaction()
+                        try {
+                            prevDefaultAccount?.let { db.accountDao.upsert(listOf(it)) }
+                            db.accountDao.upsert(listOf(newAccount))
+                            db.setTransactionSuccessful()
+                        } finally {
+                            db.endTransaction()
+                        }
+                    }
         }
     }
-
 }

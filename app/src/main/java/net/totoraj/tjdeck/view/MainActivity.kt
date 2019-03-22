@@ -1,4 +1,4 @@
-package net.totoraj.tjdeck
+package net.totoraj.tjdeck.view
 
 import android.annotation.SuppressLint
 import android.app.Activity
@@ -14,46 +14,69 @@ import android.view.ViewGroup
 import android.view.WindowManager
 import android.webkit.*
 import android.widget.FrameLayout
+import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.GravityCompat
 import androidx.drawerlayout.widget.DrawerLayout
 import com.google.android.material.navigation.NavigationView
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.GlobalScope
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancelChildren
+import net.totoraj.tjdeck.BuildConfig
+import net.totoraj.tjdeck.R
+import net.totoraj.tjdeck.viewmodel.TwitterViewModel
 import java.io.BufferedReader
 import java.io.File
 import java.io.IOException
 import java.io.InputStreamReader
 import java.util.*
 import java.util.regex.Pattern
+import kotlin.coroutines.CoroutineContext
 
-class MainActivity : AppCompatActivity(), OnBackPressedCallback {
-
+class MainActivity : AppCompatActivity(), CoroutineScope, OnBackPressedCallback {
     companion object {
         const val TAG = "TJDeck"
         const val INPUT_FILE_REQUEST_CODE = 1
         const val TWEET_DECK = "https://tweetdeck.twitter.com"
     }
 
+    private val job = SupervisorJob()
+
     private lateinit var drawerLayout: DrawerLayout
     private lateinit var mWebView: WebView
     private lateinit var videoFrame: FrameLayout
 
-    private lateinit var viewModel: AccountLinkageSettingsViewModel
+    private lateinit var viewModel: TwitterViewModel
     private lateinit var accountLinkageSettings: AccountLinkageSettingsFragment
 
     private var mFilePathCallback: ValueCallback<Array<Uri>>? = null
     private var mCameraPhotoPath: String? = null
+
+    override val coroutineContext: CoroutineContext
+        get() = Dispatchers.Main + job
+
+    override fun onDestroy() {
+        super.onDestroy()
+        coroutineContext.cancelChildren()
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-        viewModel = AccountLinkageSettingsViewModel.getModel(this)
         addOnBackPressedCallback(this, this)
+
+        viewModel = TwitterViewModel.getModel(this).apply {
+            observeThrowable(this@MainActivity) {
+                it ?: return@observeThrowable
+
+                Toast.makeText(this@MainActivity, it.first, Toast.LENGTH_LONG).show()
+                Log.e("MainActivity", "error occurred", it.second)
+            }
+        }
 
         drawerLayout = findViewById(R.id.drawer_layout)
         accountLinkageSettings = AccountLinkageSettingsFragment.newInstance()
@@ -161,11 +184,9 @@ class MainActivity : AppCompatActivity(), OnBackPressedCallback {
     private fun initDrawer() {
         drawerLayout.findViewById<NavigationView>(R.id.navigationView).run {
             viewModel.observeLinkedAccounts(this@MainActivity) { accounts ->
-                accounts?.let {
-                    if (accounts.isNotEmpty()) {
-                        findViewById<View>(R.id.editor_tweet).isEnabled = true
-                    }
-                }
+                accounts ?: return@observeLinkedAccounts
+
+                if (accounts.isNotEmpty()) findViewById<View>(R.id.editor_tweet).isEnabled = true
             }
 
             setNavigationItemSelectedListener {

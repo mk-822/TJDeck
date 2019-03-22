@@ -1,12 +1,10 @@
-package net.totoraj.tjdeck
+package net.totoraj.tjdeck.view
 
-import android.content.DialogInterface
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import android.text.Editable
 import android.text.TextWatcher
-import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -15,9 +13,13 @@ import android.widget.ImageView
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
-import androidx.appcompat.app.AlertDialog
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.FragmentActivity
+import net.totoraj.tjdeck.R
+import net.totoraj.tjdeck.model.exception.AccessTokenException
+import net.totoraj.tjdeck.model.exception.RequestTokenException
+import net.totoraj.tjdeck.model.repository.TwitterRepository
+import net.totoraj.tjdeck.viewmodel.TwitterViewModel
 
 
 class AccountLinkageSettingsFragment : Fragment(), OnBackPressedCallback {
@@ -26,7 +28,7 @@ class AccountLinkageSettingsFragment : Fragment(), OnBackPressedCallback {
     }
 
     private lateinit var mActivity: FragmentActivity
-    private lateinit var viewModel: AccountLinkageSettingsViewModel
+    private lateinit var viewModel: TwitterViewModel
     private var isCancelable = true
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -36,35 +38,20 @@ class AccountLinkageSettingsFragment : Fragment(), OnBackPressedCallback {
             mActivity = requireActivity().apply {
                 addOnBackPressedCallback(this@AccountLinkageSettingsFragment, this@AccountLinkageSettingsFragment)
             }
-            viewModel = AccountLinkageSettingsViewModel.getModel(mActivity).apply {
-                observeCallbackUrl(this@AccountLinkageSettingsFragment) { urlString ->
-                    urlString?.let {
-                        isCancelable = true
-                        if (urlString.isEmpty()) {
-                            Toast.makeText(mActivity, "incorrect Consumer Key/Secret", Toast.LENGTH_LONG).show()
-                            resetViews()
-                        } else {
-                            startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(urlString)))
-                        }
-                    }
-                }
 
-                observeHasToken(this@AccountLinkageSettingsFragment) { hasToken ->
-                    hasToken?.let {
-                        isCancelable = true
-                        if (hasToken) {
-                            viewModel.refreshLinkedAccounts()
-                        } else {
-                            Toast.makeText(mActivity, "incorrect PIN", Toast.LENGTH_LONG).show()
+            viewModel = TwitterViewModel.getModel(mActivity).apply {
+                observeThrowable(this@AccountLinkageSettingsFragment) {
+                    it ?: return@observeThrowable
+
+                    isCancelable = true
+                    when (it.second) {
+                        is RequestTokenException -> {
+                            resetViews()
+                        }
+                        is AccessTokenException -> {
+                            isCancelable = true
                             resetGetAuthTokenViews()
                         }
-                    }
-                }
-
-                observeLinkedAccounts(this@AccountLinkageSettingsFragment) { accounts ->
-                    accounts?.let {
-                        if (accounts.isEmpty()) return@observeLinkedAccounts
-                        handleOnBackPressed()
                     }
                 }
             }
@@ -73,7 +60,7 @@ class AccountLinkageSettingsFragment : Fragment(), OnBackPressedCallback {
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?,
                               savedInstanceState: Bundle?): View? {
-        return inflater.inflate(R.layout.account_linkage_settings_fragment, container, false)
+        return inflater.inflate(R.layout.fragment_account_linkage_settings, container, false)
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
@@ -103,27 +90,48 @@ class AccountLinkageSettingsFragment : Fragment(), OnBackPressedCallback {
                 setOnClickListener { handleOnBackPressed() }
             }
 
-            initGetRequestTokenViews(this)
-            initGetAuthTokenViews(this)
-        }
-    }
-
-    private fun initGetRequestTokenViews(view: View) {
-        view.run {
             val inputKey = findViewById<EditText>(R.id.editor_consumer_key).apply {
                 setText(TwitterRepository.Consumer.key, TextView.BufferType.NORMAL)
                 isEnabled = text.isEmpty()
             }
+
             val inputSecret = findViewById<EditText>(R.id.editor_consumer_secret).apply {
                 setText(TwitterRepository.Consumer.secret, TextView.BufferType.NORMAL)
                 isEnabled = text.isEmpty()
             }
+
+            val inputPin = findViewById<EditText>(R.id.editor_pin)
+
             val requestButton = findViewById<TextView>(R.id.button_token_request).apply {
                 isEnabled = !(inputKey.isEnabled && inputSecret.isEnabled)
                 setOnClickListener {
                     isCancelable = false
-                    viewModel.getCallbackUrl(inputKey.editableText.toString(), inputSecret.editableText.toString())
+                    viewModel.getRequestToken(inputKey.editableText.toString(), inputSecret.editableText.toString())
                 }
+            }
+
+            viewModel.observeCallbackUrl(this@AccountLinkageSettingsFragment) { urlString ->
+                urlString ?: return@observeCallbackUrl
+
+                isCancelable = true
+                startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(urlString)))
+                inputPin.isEnabled = true
+            }
+
+            val linkButton = findViewById<TextView>(R.id.button_account_link).apply {
+                setOnClickListener {
+                    isCancelable = false
+                    viewModel.getAccessToken(inputPin.editableText.toString())
+                }
+            }
+
+            viewModel.observeAccessToken(this@AccountLinkageSettingsFragment) { accessToken ->
+                accessToken ?: return@observeAccessToken
+
+                isCancelable = true
+                Toast.makeText(mActivity, "linked: ${accessToken.screenName}", Toast.LENGTH_LONG).show()
+                resetGetAuthTokenViews()
+                viewModel.refreshLinkedAccounts()
             }
 
             inputKey.addTextChangedListener(object : TextWatcher {
@@ -139,6 +147,7 @@ class AccountLinkageSettingsFragment : Fragment(), OnBackPressedCallback {
                     s?.let { requestButton.isEnabled = s.isNotEmpty() && inputSecret.editableText.isNotEmpty() }
                 }
             })
+
             inputSecret.addTextChangedListener(object : TextWatcher {
                 override fun afterTextChanged(s: Editable?) {
                     // do nothing
@@ -152,22 +161,6 @@ class AccountLinkageSettingsFragment : Fragment(), OnBackPressedCallback {
                     s?.let { requestButton.isEnabled = s.isNotEmpty() && inputKey.editableText.isNotEmpty() }
                 }
             })
-        }
-    }
-
-    private fun initGetAuthTokenViews(view: View) {
-        view.run {
-            val inputPin = findViewById<EditText>(R.id.editor_pin)
-            val linkButton = findViewById<TextView>(R.id.button_account_link)
-
-            viewModel.observeCallbackUrl(this@AccountLinkageSettingsFragment) {
-                it?.let { inputPin.isEnabled = true }
-            }
-
-            linkButton.setOnClickListener {
-                isCancelable = false
-                viewModel.getAccessToken(inputPin.editableText.toString())
-            }
 
             inputPin.addTextChangedListener(object : TextWatcher {
                 override fun afterTextChanged(s: Editable?) {
@@ -217,5 +210,4 @@ class AccountLinkageSettingsFragment : Fragment(), OnBackPressedCallback {
             findViewById<TextView>(R.id.button_account_link).isEnabled = false
         }
     }
-
 }
