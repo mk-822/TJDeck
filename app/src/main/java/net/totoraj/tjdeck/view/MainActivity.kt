@@ -2,6 +2,7 @@ package net.totoraj.tjdeck.view
 
 import android.annotation.SuppressLint
 import android.app.Activity
+import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
@@ -12,6 +13,7 @@ import android.util.Log
 import android.view.View
 import android.view.ViewGroup
 import android.view.WindowManager
+import android.view.inputmethod.InputMethodManager
 import android.webkit.*
 import android.widget.FrameLayout
 import android.widget.Toast
@@ -182,28 +184,53 @@ class MainActivity : AppCompatActivity(), CoroutineScope, OnBackPressedCallback 
     }
 
     private fun initDrawer() {
-        drawerLayout.findViewById<NavigationView>(R.id.navigationView).run {
-            viewModel.observeLinkedAccounts(this@MainActivity) { accounts ->
-                accounts ?: return@observeLinkedAccounts
+        drawerLayout.run {
+            addDrawerListener(object : DrawerLayout.DrawerListener {
+                val inputMethodManager = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
 
-                if (accounts.isNotEmpty()) findViewById<View>(R.id.editor_tweet).isEnabled = true
-            }
+                override fun onDrawerStateChanged(newState: Int) {
+                    // do nothing
+                }
 
-            setNavigationItemSelectedListener {
-                when (it.itemId) {
-                    R.id.menu_show_tjdeck_option -> mWebView.evaluateJavascript("tj_deck.showOptionPanel()", null)
-                    R.id.menu_post_only_linked_option -> {
-                        supportFragmentManager.beginTransaction().run {
-                            show(accountLinkageSettings)
-                            commit()
+                override fun onDrawerSlide(drawerView: View, slideOffset: Float) {
+                    // do nothing
+                }
+
+                override fun onDrawerClosed(drawerView: View) {
+                    inputMethodManager.hideSoftInputFromWindow(
+                            drawerLayout.windowToken,
+                            InputMethodManager.HIDE_NOT_ALWAYS
+                    )
+                    requestFocus()
+                }
+
+                override fun onDrawerOpened(drawerView: View) {
+                    // do nothing
+                }
+            })
+
+            findViewById<NavigationView>(R.id.navigationView).run {
+                viewModel.observeLinkedAccounts(this@MainActivity) { accounts ->
+                    accounts ?: return@observeLinkedAccounts
+
+                    if (accounts.isNotEmpty()) findViewById<View>(R.id.editor_tweet).isEnabled = true
+                }
+
+                setNavigationItemSelectedListener {
+                    when (it.itemId) {
+                        R.id.menu_show_tjdeck_option -> mWebView.evaluateJavascript("tj_deck.showOptionPanel()", null)
+                        R.id.menu_post_only_linked_option -> {
+                            supportFragmentManager.beginTransaction().run {
+                                show(accountLinkageSettings)
+                                commit()
+                            }
                         }
                     }
+                    drawerLayout.closeDrawer(GravityCompat.END)
+                    true
                 }
-                drawerLayout.closeDrawer(GravityCompat.END)
-                true
             }
         }
-
         viewModel.refreshLinkedAccounts()
     }
 
