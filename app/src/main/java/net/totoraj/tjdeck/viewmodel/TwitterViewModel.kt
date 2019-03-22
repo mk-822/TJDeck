@@ -127,7 +127,7 @@ class TwitterViewModel : ViewModel(), CoroutineScope {
 
     private fun throws(cause: Throwable) {
         val errorMessage = when (cause) {
-            is TwitterException -> cause.errorMessage
+            is TwitterException -> cause.errorMessage ?: "network error occurred"
             else -> "unexpected error occurred"
         }
 
