@@ -1,0 +1,27 @@
+# Built application files
+*.apk
+*.ap_
+*.aab
+
+# Log Files
+*.log
+
+# Keystore files
+*.jks
+*.keystore
+
+# Google Services (e.g. APIs or Firebase)
+google-services.json
+
+#
+*.iml
+.DS_Store
+.externalNativeBuild
+.gradle
+.idea/*
+build
+local.properties
+/captures
+
+# not ignore
+!.idea/codeStyleSettings.xml
