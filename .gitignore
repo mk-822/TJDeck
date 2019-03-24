@@ -10,6 +10,9 @@
 *.jks
 *.keystore
 
+# release
+release.gradle
+
 # Google Services (e.g. APIs or Firebase)
 google-services.json
 
