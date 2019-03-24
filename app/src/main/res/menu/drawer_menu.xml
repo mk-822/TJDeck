@@ -6,4 +6,7 @@
     <item
         android:id="@+id/menu_post_only_linked_option"
         android:title="投稿用Twitter連携設定を開く" />
+    <item
+        android:id="@+id/menu_oss_license"
+        android:title="OSSライセンス" />
 </menu>

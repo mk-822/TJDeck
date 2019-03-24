@@ -172,6 +172,9 @@ class MainActivity : AppCompatActivity(), OnBackPressedCallback {
                         commit()
                     }
                 }
+                R.id.menu_oss_license -> {
+                    startActivity(Intent(this, OssLicenseActivity::class.java))
+                }
             }
             drawerLayout.closeDrawer(GravityCompat.END)
             true
