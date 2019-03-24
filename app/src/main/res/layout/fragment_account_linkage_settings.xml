@@ -9,11 +9,10 @@
 
     <ImageView
         android:id="@+id/button_close"
-        android:layout_width="15dp"
-        android:layout_height="15dp"
+        android:layout_width="14dp"
+        android:layout_height="14dp"
         android:layout_margin="20dp"
-        android:contentDescription="close"
-        android:src="@drawable/ic_button_close" />
+        android:src="@drawable/ic_close" />
 
     <androidx.constraintlayout.widget.ConstraintLayout
         android:layout_width="match_parent"
@@ -57,7 +56,7 @@
             android:id="@+id/button_token_request"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:background="@drawable/selector_button_bg"
+            android:background="@drawable/selector_text_button_bg"
             android:enabled="false"
             android:text="request"
             android:textColor="@drawable/selector_button_text_color"
@@ -95,7 +94,7 @@
             android:id="@+id/button_account_link"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:background="@drawable/selector_button_bg"
+            android:background="@drawable/selector_text_button_bg"
             android:enabled="false"
             android:text="link"
             android:textColor="@drawable/selector_button_text_color"
@@ -107,14 +106,13 @@
     </androidx.constraintlayout.widget.ConstraintLayout>
 
     <FrameLayout
-        android:id="@+id/loading"
+        android:id="@+id/indicator_loading"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:background="@color/blackOpacity50"
         android:visibility="gone">
 
         <ProgressBar
-            android:id="@+id/indicator_loading"
             android:layout_width="80dp"
             android:layout_height="80dp"
             android:layout_gravity="center"

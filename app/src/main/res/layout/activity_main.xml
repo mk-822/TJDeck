@@ -24,15 +24,16 @@
         android:layout_height="match_parent" />
 
     <com.google.android.material.navigation.NavigationView
-        android:id="@+id/navigationView"
+        android:id="@+id/navigation_view"
         android:layout_width="240dp"
         android:layout_height="match_parent"
         android:layout_gravity="end"
         app:menu="@menu/drawer_menu">
 
         <net.totoraj.tjdeck.view.TweetMenuView
+            android:id="@+id/tweet_menu"
             android:layout_width="match_parent"
-            android:layout_height="200dp"
+            android:layout_height="wrap_content"
             android:layout_gravity="bottom" />
     </com.google.android.material.navigation.NavigationView>
 </androidx.drawerlayout.widget.DrawerLayout>

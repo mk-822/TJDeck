@@ -15,7 +15,7 @@
             android:shape="ring"
             android:thickness="2dp"
             android:useLevel="true">
-            <solid android:color="@color/twitterMain" />
+            <solid android:color="@color/twitter_main" />
         </shape>
     </item>
 </layer-list>

@@ -8,16 +8,14 @@ import android.text.TextWatcher
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.EditText
-import android.widget.ImageView
-import android.widget.TextView
-import android.widget.Toast
+import android.widget.*
 import androidx.activity.OnBackPressedCallback
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.FragmentActivity
+import kotlinx.android.synthetic.main.fragment_account_linkage_settings.*
 import net.totoraj.tjdeck.R
-import net.totoraj.tjdeck.model.exception.AccessTokenException
-import net.totoraj.tjdeck.model.exception.RequestTokenException
+import net.totoraj.tjdeck.exception.AccessTokenException
+import net.totoraj.tjdeck.exception.RequestTokenException
 import net.totoraj.tjdeck.model.repository.TwitterRepository
 import net.totoraj.tjdeck.viewmodel.TwitterViewModel
 
@@ -30,7 +28,14 @@ class AccountLinkageSettingsFragment : Fragment(), OnBackPressedCallback {
     private lateinit var mActivity: FragmentActivity
     private lateinit var viewModel: TwitterViewModel
     private var isCancelable = true
-    private var loadingView: View? = null
+
+    private lateinit var closeButton: ImageView
+    private lateinit var cKeyEditor: EditText
+    private lateinit var cSecretEditor: EditText
+    private lateinit var requestButton: TextView
+    private lateinit var pinEditor: EditText
+    private lateinit var linkButton: TextView
+    private lateinit var loadingIndicator: FrameLayout
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -51,6 +56,25 @@ class AccountLinkageSettingsFragment : Fragment(), OnBackPressedCallback {
                         is AccessTokenException -> resetGetAuthTokenViews()
                     }
                 }
+
+                observeCallbackUrl(this@AccountLinkageSettingsFragment) { urlString ->
+                    urlString ?: return@observeCallbackUrl
+
+                    isCancelable = true
+                    dismissLoading()
+                    startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(urlString)))
+                    pinEditor.isEnabled = true
+                }
+
+                observeAccessToken(this@AccountLinkageSettingsFragment) { accessToken ->
+                    accessToken ?: return@observeAccessToken
+
+                    isCancelable = true
+                    dismissLoading()
+                    Toast.makeText(mActivity, "linked: ${accessToken.screenName}", Toast.LENGTH_LONG).show()
+                    resetGetAuthTokenViews()
+                    refreshLinkedAccounts()
+                }
             }
         }
     }
@@ -62,7 +86,15 @@ class AccountLinkageSettingsFragment : Fragment(), OnBackPressedCallback {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        initViews(view)
+
+        closeButton = button_close
+        cKeyEditor = editor_consumer_key
+        cSecretEditor = editor_consumer_secret
+        requestButton = button_token_request
+        pinEditor = editor_pin
+        linkButton = button_account_link
+        loadingIndicator = indicator_loading
+        initViews()
     }
 
     override fun handleOnBackPressed(): Boolean {
@@ -78,68 +110,15 @@ class AccountLinkageSettingsFragment : Fragment(), OnBackPressedCallback {
         return true
     }
 
-    private fun initViews(view: View) {
-        view.run {
-            // 透過抑止
-            setOnTouchListener { _, _ -> true }
+    private fun initViews() {
+        view!!.setOnTouchListener { _, _ -> true }
+        loadingIndicator.setOnTouchListener { _, _ -> true }
+        closeButton.setOnClickListener { handleOnBackPressed() }
 
-            loadingView = findViewById<View>(R.id.loading).apply {
-                setOnTouchListener { _, _ -> true }
-            }
-
-            findViewById<ImageView>(R.id.button_close).run {
-                setOnClickListener { handleOnBackPressed() }
-            }
-
-            val inputKey = findViewById<EditText>(R.id.editor_consumer_key).apply {
-                setText(TwitterRepository.Consumer.key, TextView.BufferType.NORMAL)
-                isEnabled = text.isEmpty()
-            }
-
-            val inputSecret = findViewById<EditText>(R.id.editor_consumer_secret).apply {
-                setText(TwitterRepository.Consumer.secret, TextView.BufferType.NORMAL)
-                isEnabled = text.isEmpty()
-            }
-
-            val inputPin = findViewById<EditText>(R.id.editor_pin)
-
-            val requestButton = findViewById<TextView>(R.id.button_token_request).apply {
-                isEnabled = !(inputKey.isEnabled && inputSecret.isEnabled)
-                setOnClickListener {
-                    isCancelable = false
-                    showLoading()
-                    viewModel.getRequestToken(inputKey.editableText.toString(), inputSecret.editableText.toString())
-                }
-            }
-
-            viewModel.observeCallbackUrl(this@AccountLinkageSettingsFragment) { urlString ->
-                urlString ?: return@observeCallbackUrl
-
-                isCancelable = true
-                dismissLoading()
-                startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(urlString)))
-                inputPin.isEnabled = true
-            }
-
-            val linkButton = findViewById<TextView>(R.id.button_account_link).apply {
-                setOnClickListener {
-                    isCancelable = false
-                    showLoading()
-                    viewModel.getAccessToken(inputPin.editableText.toString())
-                }
-            }
-
-            viewModel.observeAccessToken(this@AccountLinkageSettingsFragment) { accessToken ->
-                accessToken ?: return@observeAccessToken
-
-                isCancelable = true
-                dismissLoading()
-                Toast.makeText(mActivity, "linked: ${accessToken.screenName}", Toast.LENGTH_LONG).show()
-                resetGetAuthTokenViews()
-                viewModel.refreshLinkedAccounts()
-            }
-
-            inputKey.addTextChangedListener(object : TextWatcher {
+        cKeyEditor.run {
+            setText(TwitterRepository.Consumer.key, TextView.BufferType.NORMAL)
+            isEnabled = text.isEmpty()
+            addTextChangedListener(object : TextWatcher {
                 override fun afterTextChanged(s: Editable?) {
                     // do nothing
                 }
@@ -149,39 +128,69 @@ class AccountLinkageSettingsFragment : Fragment(), OnBackPressedCallback {
                 }
 
                 override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
-                    s?.let { requestButton.isEnabled = s.isNotEmpty() && inputSecret.editableText.isNotEmpty() }
-                }
-            })
-
-            inputSecret.addTextChangedListener(object : TextWatcher {
-                override fun afterTextChanged(s: Editable?) {
-                    // do nothing
-                }
-
-                override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {
-                    // do nothing
-                }
-
-                override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
-                    s?.let { requestButton.isEnabled = s.isNotEmpty() && inputKey.editableText.isNotEmpty() }
-                }
-            })
-
-            inputPin.addTextChangedListener(object : TextWatcher {
-                override fun afterTextChanged(s: Editable?) {
-                    // do nothing
-                }
-
-                override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {
-                    // do nothing
-                }
-
-                override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
-                    s?.let { linkButton.isEnabled = s.isNotEmpty() }
+                    s?.let {
+                        requestButton.isEnabled =
+                                s.isNotEmpty() && cSecretEditor.text.isNotEmpty()
+                    }
                 }
             })
         }
+
+        cSecretEditor.run {
+            setText(TwitterRepository.Consumer.secret, TextView.BufferType.NORMAL)
+            isEnabled = text.isEmpty()
+            addTextChangedListener(object : TextWatcher {
+                override fun afterTextChanged(s: Editable?) {
+                    // do nothing
+                }
+
+                override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {
+                    // do nothing
+                }
+
+                override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
+                    s?.let {
+                        requestButton.isEnabled =
+                                s.isNotEmpty() && cKeyEditor.text.isNotEmpty()
+                    }
+                }
+            })
+        }
+
+        requestButton.run {
+            isEnabled = !(cKeyEditor.isEnabled && cSecretEditor.isEnabled)
+            setOnClickListener {
+                isCancelable = false
+                showLoading()
+
+                viewModel.getRequestToken(
+                        cKeyEditor.text.toString(),
+                        cSecretEditor.text.toString()
+                )
+            }
+        }
+
+        pinEditor.addTextChangedListener(object : TextWatcher {
+            override fun afterTextChanged(s: Editable?) {
+                // do nothing
+            }
+
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {
+                // do nothing
+            }
+
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
+                s?.let { linkButton.isEnabled = s.isNotEmpty() }
+            }
+        })
+
+        linkButton.setOnClickListener {
+            isCancelable = false
+            showLoading()
+            viewModel.getAccessToken(pinEditor.text.toString())
+        }
     }
+
 
     private fun resetViews() {
         resetGetRequestTokenViews()
@@ -189,38 +198,34 @@ class AccountLinkageSettingsFragment : Fragment(), OnBackPressedCallback {
     }
 
     private fun resetGetRequestTokenViews() {
-        view!!.run {
-            val inputKey = findViewById<EditText>(R.id.editor_consumer_key).apply {
-                setText(TwitterRepository.Consumer.key, TextView.BufferType.NORMAL)
-                isEnabled = text.isEmpty()
-            }
-
-            val inputSecret = findViewById<EditText>(R.id.editor_consumer_secret).apply {
-                setText(TwitterRepository.Consumer.secret, TextView.BufferType.NORMAL)
-                isEnabled = text.isEmpty()
-            }
-
-            findViewById<TextView>(R.id.button_token_request).isEnabled =
-                    !(inputKey.isEnabled && inputSecret.isEnabled)
+        cKeyEditor.run {
+            setText(TwitterRepository.Consumer.key, TextView.BufferType.NORMAL)
+            isEnabled = text.isEmpty()
         }
+
+        cSecretEditor.run {
+            setText(TwitterRepository.Consumer.secret, TextView.BufferType.NORMAL)
+            isEnabled = text.isEmpty()
+        }
+
+        requestButton.isEnabled =
+                !(cKeyEditor.isEnabled && cSecretEditor.isEnabled)
     }
 
     private fun resetGetAuthTokenViews() {
-        view!!.run {
-            findViewById<EditText>(R.id.editor_pin).run {
-                editableText.clear()
-                isEnabled = false
-            }
-
-            findViewById<TextView>(R.id.button_account_link).isEnabled = false
+        pinEditor.run {
+            text.clear()
+            isEnabled = false
         }
+
+        linkButton.isEnabled = false
     }
 
     private fun showLoading() {
-        loadingView?.visibility = View.VISIBLE
+        loadingIndicator.visibility = View.VISIBLE
     }
 
     private fun dismissLoading() {
-        loadingView?.visibility = View.GONE
+        loadingIndicator.visibility = View.GONE
     }
 }

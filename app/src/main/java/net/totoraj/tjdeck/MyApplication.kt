@@ -21,8 +21,8 @@ class MyApplication : Application() {
         appContext = applicationContext
         val twitter = TwitterFactory.getSingleton()
 
-        MyDatabase.createDatabase(applicationContext)
-        TwitterRepository.init(applicationContext, twitter)
+        MyDatabase.createDatabase(appContext)
+        TwitterRepository.init(appContext, twitter)
 
         if (TwitterRepository.Account.isLinked) {
             TwitterRepository.Consumer.init()

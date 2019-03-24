@@ -1,4 +1,3 @@
 <resources>
     <string name="app_name">TJDeck</string>
-    <string name="title_activity_account_linkage_settings">AccountLinkageSettingsActivity</string>
 </resources>

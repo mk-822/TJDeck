@@ -21,13 +21,15 @@ import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.GravityCompat
 import androidx.drawerlayout.widget.DrawerLayout
+import androidx.drawerlayout.widget.DrawerLayout.DrawerListener
+import androidx.recyclerview.widget.ItemTouchHelper
+import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.navigation.NavigationView
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.cancelChildren
+import kotlinx.android.synthetic.main.activity_main.*
 import net.totoraj.tjdeck.BuildConfig
 import net.totoraj.tjdeck.R
+import net.totoraj.tjdeck.adapter.UploadItemAdapter
+import net.totoraj.tjdeck.callback.SwipeToDeleteCallback
 import net.totoraj.tjdeck.viewmodel.TwitterViewModel
 import java.io.BufferedReader
 import java.io.File
@@ -35,33 +37,35 @@ import java.io.IOException
 import java.io.InputStreamReader
 import java.util.*
 import java.util.regex.Pattern
-import kotlin.coroutines.CoroutineContext
 
-class MainActivity : AppCompatActivity(), CoroutineScope, OnBackPressedCallback {
+class MainActivity : AppCompatActivity(), OnBackPressedCallback {
     companion object {
         const val TAG = "TJDeck"
         const val INPUT_FILE_REQUEST_CODE = 1
         const val TWEET_DECK = "https://tweetdeck.twitter.com"
     }
 
-    private val job = SupervisorJob()
-
-    private lateinit var drawerLayout: DrawerLayout
     private lateinit var mWebView: WebView
     private lateinit var videoFrame: FrameLayout
-
-    private lateinit var viewModel: TwitterViewModel
-    private lateinit var accountLinkageSettings: AccountLinkageSettingsFragment
-
     private var mFilePathCallback: ValueCallback<Array<Uri>>? = null
     private var mCameraPhotoPath: String? = null
 
-    override val coroutineContext: CoroutineContext
-        get() = Dispatchers.Main + job
+    private lateinit var drawerLayout: DrawerLayout
+    private lateinit var accountLinkageSettings: AccountLinkageSettingsFragment
+    private lateinit var navigationView: NavigationView
+    private lateinit var tweetMenuView: TweetMenuView
+    private lateinit var viewModel: TwitterViewModel
 
-    override fun onDestroy() {
-        super.onDestroy()
-        coroutineContext.cancelChildren()
+    /* WebViewの内容を保持する */
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        mWebView.saveState(outState)
+    }
+
+    /* WebViewの保持した内容を戻す */
+    override fun onRestoreInstanceState(savedInstanceState: Bundle) {
+        super.onRestoreInstanceState(savedInstanceState)
+        mWebView.restoreState(savedInstanceState)
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -70,6 +74,13 @@ class MainActivity : AppCompatActivity(), CoroutineScope, OnBackPressedCallback 
 
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         addOnBackPressedCallback(this, this)
+
+        drawerLayout = drawer_layout
+        accountLinkageSettings = AccountLinkageSettingsFragment.newInstance()
+        navigationView = navigation_view
+        tweetMenuView = tweet_menu
+        mWebView = web_view
+        videoFrame = video_view_frame
 
         viewModel = TwitterViewModel.getModel(this).apply {
             observeThrowable(this@MainActivity) {
@@ -80,9 +91,6 @@ class MainActivity : AppCompatActivity(), CoroutineScope, OnBackPressedCallback 
             }
         }
 
-        drawerLayout = findViewById(R.id.drawer_layout)
-        accountLinkageSettings = AccountLinkageSettingsFragment.newInstance()
-
         supportFragmentManager.beginTransaction().run {
             replace(R.id.container_account_linkage_settings, accountLinkageSettings)
             hide(accountLinkageSettings)
@@ -90,24 +98,26 @@ class MainActivity : AppCompatActivity(), CoroutineScope, OnBackPressedCallback 
         }
 
         initDrawer()
-        initWebView()
+        initTweetMenu()
+        viewModel.refreshLinkedAccounts()
 
-        if (savedInstanceState == null) {
-            mWebView.loadUrl(TWEET_DECK)
-        }
+        initWebView()
+        if (savedInstanceState == null) mWebView.loadUrl(TWEET_DECK)
+
     }
 
-    /* アセットからjsファイルを読み込んでStringで返すやつ */
-    @Throws(Exception::class)
-    private fun loadAssets(fileName: String): String {
-        val res = StringBuilder()
-        val br = BufferedReader(InputStreamReader(assets.open(fileName), "UTF-8"))
+    override fun onResume() {
+        super.onResume()
 
-        for (line in br.readLines()) {
-            res.append(line)
+        if (videoFrame.visibility == View.VISIBLE) hideSystemUi()
+    }
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        when (requestCode) {
+            INPUT_FILE_REQUEST_CODE -> callbackChromeClientOnShowFileChooser(resultCode, data)
+            TweetMenuView.REQUEST_CODE_CHOOSE_FILE -> callbackChoseFile(resultCode, data)
+            else -> super.onActivityResult(requestCode, resultCode, data)
         }
-
-        return res.substring(0)
     }
 
     override fun handleOnBackPressed(): Boolean {
@@ -124,23 +134,128 @@ class MainActivity : AppCompatActivity(), CoroutineScope, OnBackPressedCallback 
         }
     }
 
-    /* WebViewの内容を保持する */
-    override fun onSaveInstanceState(outState: Bundle) {
-        super.onSaveInstanceState(outState)
-        mWebView.saveState(outState)
-    }
+    private fun initDrawer() {
+        drawerLayout.run {
+            addDrawerListener(object : DrawerListener {
+                val inputMethodManager = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
 
-    /* WebViewの保持した内容を戻す */
-    override fun onRestoreInstanceState(savedInstanceState: Bundle) {
-        super.onRestoreInstanceState(savedInstanceState)
-        mWebView.restoreState(savedInstanceState)
-    }
+                override fun onDrawerStateChanged(newState: Int) {
+                    // do nothing
+                }
 
-    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-        if (requestCode != INPUT_FILE_REQUEST_CODE || mFilePathCallback == null) {
-            super.onActivityResult(requestCode, resultCode, data)
-            return
+                override fun onDrawerSlide(drawerView: View, slideOffset: Float) {
+                    // do nothing
+                }
+
+                override fun onDrawerClosed(drawerView: View) {
+                    inputMethodManager.hideSoftInputFromWindow(
+                            windowToken,
+                            InputMethodManager.HIDE_NOT_ALWAYS
+                    )
+                    requestFocus()
+                }
+
+                override fun onDrawerOpened(drawerView: View) {
+                    // do nothing
+                }
+            })
         }
+
+        navigationView.setNavigationItemSelectedListener {
+            when (it.itemId) {
+                R.id.menu_show_tjdeck_option -> {
+                    mWebView.evaluateJavascript("tj_deck.showOptionPanel()", null)
+                }
+                R.id.menu_post_only_linked_option -> {
+                    supportFragmentManager.beginTransaction().run {
+                        show(accountLinkageSettings)
+                        commit()
+                    }
+                }
+            }
+            drawerLayout.closeDrawer(GravityCompat.END)
+            true
+        }
+    }
+
+    private fun initTweetMenu() {
+        tweetMenuView.run {
+            tweetButton.run {
+                setOnClickListener {
+                    val tweet = tweetEdit.text.toString()
+                    tweetEdit.text.clear()
+                    viewModel.tweet(tweet)
+                }
+            }
+
+            addMediaButton.run {
+                setOnClickListener {
+                    val intent = Intent(Intent.ACTION_GET_CONTENT).apply {
+                        addCategory(Intent.CATEGORY_OPENABLE)
+                        // 公式アプリでも画像しか選べない
+                        // type = "*/*"
+                        // putExtra(Intent.EXTRA_MIME_TYPES, arrayOf("image/*", "video/*"))
+                        type = "image/*"
+                        putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true)
+                    }
+                    startActivityForResult(intent, TweetMenuView.REQUEST_CODE_CHOOSE_FILE)
+                }
+            }
+
+            uploadItems.run {
+                viewModel.observeFiles(this@MainActivity) {
+                    it ?: return@observeFiles
+
+                    uploadItems.run {
+                        if (adapter == null) adapter = UploadItemAdapter(listOf())
+                    }
+                    adaptPreview(it)
+                }
+
+
+                val itemTouchHelper = ItemTouchHelper(object : SwipeToDeleteCallback(ItemTouchHelper.START) {
+                    override fun onSwiped(viewHolder: RecyclerView.ViewHolder, direction: Int) {
+                        viewModel.removeFile(viewHolder.adapterPosition)
+                    }
+                })
+                itemTouchHelper.attachToRecyclerView(this)
+            }
+
+            viewModel.run {
+                observeLinkedAccounts(this@MainActivity) { accounts ->
+                    accounts ?: return@observeLinkedAccounts
+
+                    if (accounts.isNotEmpty()) {
+                        tweetEdit.isEnabled = true
+                        addMediaButton.run {
+                            isActivated = true
+                            isEnabled = true
+                        }
+                        // todo adapt account icon list
+                    }
+                }
+            }
+        }
+
+    }
+
+    private fun callbackChoseFile(resultCode: Int, intent: Intent?) {
+        if (resultCode != Activity.RESULT_OK || intent == null) return
+
+        val files = mutableListOf<Uri>()
+        intent.clipData?.let {
+            for (i in 0 until it.itemCount) {
+                files.add(it.getItemAt(i).uri)
+            }
+        } ?: intent.data?.let {
+            files.add(it)
+        } ?: return
+
+        viewModel.addFiles(files)
+    }
+
+    private fun callbackChromeClientOnShowFileChooser(resultCode: Int, data: Intent?) {
+        mFilePathCallback ?: return
 
         var results: Array<Uri>? = null
 
@@ -164,12 +279,6 @@ class MainActivity : AppCompatActivity(), CoroutineScope, OnBackPressedCallback 
         return
     }
 
-    override fun onResume() {
-        super.onResume()
-
-        if (videoFrame.visibility == View.VISIBLE) hideSystemUi()
-    }
-
     fun hideSystemUi() {
         window.decorView.systemUiVisibility = (View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
                 or View.SYSTEM_UI_FLAG_LAYOUT_STABLE
@@ -183,61 +292,11 @@ class MainActivity : AppCompatActivity(), CoroutineScope, OnBackPressedCallback 
         window.decorView.systemUiVisibility = (View.SYSTEM_UI_FLAG_LAYOUT_STABLE)
     }
 
-    private fun initDrawer() {
-        drawerLayout.run {
-            addDrawerListener(object : DrawerLayout.DrawerListener {
-                val inputMethodManager = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
-
-                override fun onDrawerStateChanged(newState: Int) {
-                    // do nothing
-                }
-
-                override fun onDrawerSlide(drawerView: View, slideOffset: Float) {
-                    // do nothing
-                }
-
-                override fun onDrawerClosed(drawerView: View) {
-                    inputMethodManager.hideSoftInputFromWindow(
-                            drawerLayout.windowToken,
-                            InputMethodManager.HIDE_NOT_ALWAYS
-                    )
-                    requestFocus()
-                }
-
-                override fun onDrawerOpened(drawerView: View) {
-                    // do nothing
-                }
-            })
-
-            findViewById<NavigationView>(R.id.navigationView).run {
-                viewModel.observeLinkedAccounts(this@MainActivity) { accounts ->
-                    accounts ?: return@observeLinkedAccounts
-
-                    if (accounts.isNotEmpty()) findViewById<View>(R.id.editor_tweet).isEnabled = true
-                }
-
-                setNavigationItemSelectedListener {
-                    when (it.itemId) {
-                        R.id.menu_show_tjdeck_option -> mWebView.evaluateJavascript("tj_deck.showOptionPanel()", null)
-                        R.id.menu_post_only_linked_option -> {
-                            supportFragmentManager.beginTransaction().run {
-                                show(accountLinkageSettings)
-                                commit()
-                            }
-                        }
-                    }
-                    drawerLayout.closeDrawer(GravityCompat.END)
-                    true
-                }
-            }
-        }
-        viewModel.refreshLinkedAccounts()
-    }
-
     @SuppressLint("SetJavaScriptEnabled")
     private fun initWebView() {
-        mWebView = findViewById<WebView>(R.id.web_view).apply {
+        mWebView.run {
             webViewClient = TJClient()
+            webChromeClient = TJChromeClient(this, videoFrame)
             settings.run {
                 javaScriptEnabled = true
                 domStorageEnabled = true
@@ -248,10 +307,20 @@ class MainActivity : AppCompatActivity(), CoroutineScope, OnBackPressedCallback 
                 displayZoomControls = false
             }
         }
-        videoFrame = findViewById(R.id.video_view_frame)
-        mWebView.webChromeClient = TJChromeClient(mWebView, videoFrame)
     }
 
+    /* アセットからjsファイルを読み込んでStringで返すやつ */
+    @Throws(Exception::class)
+    private fun loadAssets(fileName: String): String {
+        val res = StringBuilder()
+        val br = BufferedReader(InputStreamReader(assets.open(fileName), "UTF-8"))
+
+        for (line in br.readLines()) {
+            res.append(line)
+        }
+
+        return res.substring(0)
+    }
 
     // https://github.com/googlearchive/chromium-webview-samples/blob/master/input-file-example/app/src/main/java/inputfilesample/android/chrome/google/com/inputfilesample/MainFragment.java
     inner class TJChromeClient(
@@ -428,6 +497,5 @@ class MainActivity : AppCompatActivity(), CoroutineScope, OnBackPressedCallback 
                 else -> Log.d(TAG, "それ以外です")
             }
         }
-
     }
 }

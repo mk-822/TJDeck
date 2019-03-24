@@ -1,4 +1,4 @@
-package net.totoraj.tjdeck.model.exception
+package net.totoraj.tjdeck.exception
 
 import twitter4j.TwitterException
 

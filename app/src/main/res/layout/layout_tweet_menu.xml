@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="@color/colorPrimaryDark"
+    android:padding="5dp">
+
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:id="@+id/container_tweet"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_margin="5dp"
+        android:background="@drawable/selector_editor_bg"
+        app:layout_constraintBottom_toTopOf="@+id/button_tweet"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent">
+
+        <EditText
+            android:id="@+id/editor_tweet"
+            android:layout_width="0dp"
+            android:layout_height="150dp"
+            android:layout_margin="5dp"
+            android:background="@color/white"
+            android:enabled="false"
+            android:gravity="start|top"
+            android:hint="What's happening?"
+            android:inputType="textMultiLine"
+            android:maxLength="@integer/max_tweet_length"
+            android:textSize="13sp"
+            app:layout_constraintBottom_toTopOf="@+id/items_upload"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
+
+        <ProgressBar
+            android:id="@+id/indicator_input_chars"
+            android:layout_width="30dp"
+            android:layout_height="30dp"
+            android:indeterminateOnly="false"
+            android:max="100"
+            android:padding="0dp"
+            android:progressDrawable="@drawable/progress_ring"
+            android:rotation="-90"
+            app:layout_constraintBottom_toBottomOf="@+id/editor_tweet"
+            app:layout_constraintEnd_toEndOf="@id/editor_tweet" />
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/items_upload"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:clipToPadding="false"
+            android:padding="@dimen/upload_item_offset"
+            android:visibility="gone"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/editor_tweet">
+
+        </androidx.recyclerview.widget.RecyclerView>
+    </androidx.constraintlayout.widget.ConstraintLayout>
+
+    <ImageView
+        android:id="@+id/button_add_media"
+        android:layout_width="wrap_content"
+        android:layout_height="0dp"
+        android:layout_marginStart="5dp"
+        android:scaleType="fitCenter"
+        android:src="@drawable/selector_add_media_button"
+        app:layout_constraintBottom_toBottomOf="@id/button_tweet"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="@+id/button_tweet" />
+
+    <TextView
+        android:id="@+id/button_tweet"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_margin="5dp"
+        android:background="@drawable/selector_text_button_bg"
+        android:enabled="false"
+        android:gravity="center"
+        android:text="Tweet"
+        android:textAllCaps="false"
+        android:textColor="@drawable/selector_button_text_color"
+        android:textSize="13dp"
+        android:textStyle="bold"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/container_tweet" />
+
+</androidx.constraintlayout.widget.ConstraintLayout>

@@ -1,24 +1,33 @@
 package net.totoraj.tjdeck.model.repository
 
 import android.content.Context
+import android.net.Uri
+import android.text.format.DateFormat
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import net.totoraj.tjdeck.R
 import net.totoraj.tjdeck.model.database.MyDatabase
 import net.totoraj.tjdeck.model.database.entity.AccountEntity
+import twitter4j.StatusUpdate
 import twitter4j.Twitter
 import twitter4j.auth.AccessToken
 import twitter4j.auth.RequestToken
+import java.util.*
 
 class TwitterRepository {
     companion object {
+        private const val dateFormat = "kkmmss"
+
         private lateinit var appContext: Context
         private lateinit var twitter: Twitter
         private lateinit var db: MyDatabase
+        private var maxMediaWithTweet: Int = 0
 
         fun init(context: Context, twitter: Twitter) {
             appContext = context
             Companion.twitter = twitter
             db = MyDatabase.getDatabase()
+            maxMediaWithTweet = appContext.resources.getInteger(R.integer.max_media_with_tweet)
         }
 
         fun getString(name: String, key: String, default: String = ""): String =
@@ -33,10 +42,25 @@ class TwitterRepository {
         fun setBoolean(name: String, key: String, value: Boolean) =
                 appContext.getSharedPreferences(name, Context.MODE_PRIVATE).edit().putBoolean(key, value).apply()
 
-        suspend fun tweet(s: String) = withContext(Dispatchers.IO) {
+        fun getMaxMediaWithTweet() = maxMediaWithTweet
+
+        suspend fun tweet(tweet: String, uriList: List<Uri>) = withContext(Dispatchers.IO) {
             try {
-                twitter.updateStatus(s)
-                Result.success("tweet: $s")
+                val status = StatusUpdate(tweet)
+                if (uriList.isNotEmpty()) {
+                    val mediaIds = mutableListOf<Long>()
+                    val prefix = DateFormat.format(dateFormat, Calendar.getInstance()).toString() + "_"
+
+                    uriList.forEachIndexed { index, uri ->
+                        val inputStream = appContext.contentResolver.openInputStream(uri)
+                        mediaIds.add(twitter.uploadMedia("$prefix$index", inputStream).mediaId)
+                    }
+
+                    status.setMediaIds(*mediaIds.toLongArray())
+                }
+
+                twitter.updateStatus(status)
+                Result.success("tweet: $tweet")
             } catch (e: Exception) {
                 Result.failure<Exception>(e)
             }
