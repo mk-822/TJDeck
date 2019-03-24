@@ -15,8 +15,8 @@ android {
         applicationId "net.totoraj.tjdeck"
         minSdkVersion 24
         targetSdkVersion 28
-        versionCode 100
-        versionName "1.0.0"
+        versionCode 110
+        versionName "1.1.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
     Properties properties = new Properties()
