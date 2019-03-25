@@ -1,7 +1,6 @@
 package net.totoraj.tjdeck.callback
 
 import android.graphics.Canvas
-import android.util.Log
 import android.view.View
 import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.RecyclerView
@@ -31,8 +30,6 @@ abstract class UploadItemSwipeCallback : ItemTouchHelper.SimpleCallback(0, ItemT
             actionState: Int,
             isCurrentlyActive: Boolean
     ) {
-        Log.d("onChildDraw", "dX:$dX dY:$dY state:$actionState isCA:$isCurrentlyActive")
-
         val holder = viewHolder as LayeredViewHolder
         when {
             dX == 0f && !isCurrentlyActive -> {
