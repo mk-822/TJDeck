@@ -11,7 +11,7 @@ import androidx.recyclerview.widget.RecyclerView
 import net.totoraj.tjdeck.MyApplication
 import net.totoraj.tjdeck.R
 
-abstract class SwipeToDeleteCallback(swipeDirs: Int) : ItemTouchHelper.SimpleCallback(0, swipeDirs) {
+abstract class UpdateItemSwipeCallback(swipeDirs: Int) : ItemTouchHelper.SimpleCallback(0, swipeDirs) {
     private val context = MyApplication.getAppContext()
 
     override fun onMove(
@@ -21,6 +21,11 @@ abstract class SwipeToDeleteCallback(swipeDirs: Int) : ItemTouchHelper.SimpleCal
     ): Boolean {
         // do nothing
         return false
+    }
+
+    override fun getSwipeThreshold(viewHolder: RecyclerView.ViewHolder): Float {
+        // fraction of the attached RecyclerView size
+        return .3f
     }
 
     private val deleteIcon = ContextCompat.getDrawable(context, R.drawable.ic_delete)!!
@@ -43,10 +48,10 @@ abstract class SwipeToDeleteCallback(swipeDirs: Int) : ItemTouchHelper.SimpleCal
 
         when {
             dX == 0f -> {
-                clearCanvas(c, itemView.right + dX, itemView.top.toFloat(), itemView.right.toFloat(), itemView.bottom.toFloat())
+                clearCanvas(c, itemView.left.toFloat(), itemView.top.toFloat(), itemView.right.toFloat(), itemView.bottom.toFloat())
             }
             dX < 0 -> {
-                background.setBounds(itemView.right + dX.toInt(), itemView.top, itemView.right, itemView.bottom)
+                background.setBounds(itemView.left, itemView.top, itemView.right, itemView.bottom)
                 background.draw(c)
 
                 // Calculate position of delete icon
@@ -66,7 +71,7 @@ abstract class SwipeToDeleteCallback(swipeDirs: Int) : ItemTouchHelper.SimpleCal
         super.onChildDraw(c, recyclerView, viewHolder, dX, dY, actionState, isCurrentlyActive)
     }
 
-    private fun clearCanvas(c: Canvas?, left: Float, top: Float, right: Float, bottom: Float) {
-        c?.drawRect(left, top, right, bottom, clearPaint)
+    private fun clearCanvas(c: Canvas, left: Float, top: Float, right: Float, bottom: Float) {
+        c.drawRect(left, top, right, bottom, clearPaint)
     }
 }

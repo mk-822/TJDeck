@@ -1,4 +1,4 @@
-package net.totoraj.tjdeck.view
+package net.totoraj.tjdeck.callback
 
 import android.net.Uri
 import androidx.recyclerview.widget.DiffUtil

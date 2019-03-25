@@ -9,7 +9,7 @@ import androidx.recyclerview.widget.RecyclerView
 import kotlinx.android.synthetic.main.layout_upload_item.view.*
 import net.totoraj.tjdeck.MyApplication.Companion.getAppContext
 import net.totoraj.tjdeck.R
-import net.totoraj.tjdeck.view.UploadItemDiffCallback
+import net.totoraj.tjdeck.callback.UploadItemDiffCallback
 
 class UploadItemAdapter(private var items: List<Uri>) : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
 

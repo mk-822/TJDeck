@@ -51,6 +51,7 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:clipToPadding="false"
+            android:overScrollMode="never"
             android:padding="@dimen/upload_item_offset"
             android:visibility="gone"
             app:layout_constraintBottom_toBottomOf="parent"
