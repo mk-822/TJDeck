@@ -9,7 +9,8 @@ import androidx.recyclerview.widget.RecyclerView
 import kotlinx.android.synthetic.main.layout_upload_item.view.*
 import net.totoraj.tjdeck.MyApplication.Companion.getAppContext
 import net.totoraj.tjdeck.R
-import net.totoraj.tjdeck.view.UploadItemDiffCallback
+import net.totoraj.tjdeck.callback.UploadItemDiffCallback
+import net.totoraj.tjdeck.callback.UploadItemSwipeCallback.LayeredViewHolder
 
 class UploadItemAdapter(private var items: List<Uri>) : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
 
@@ -31,10 +32,14 @@ class UploadItemAdapter(private var items: List<Uri>) : RecyclerView.Adapter<Rec
             when (holder) {
                 is UploadItemViewHolder -> holder.bind(items[position])
                 else -> { // do nothing
+
                 }
             }
 
-    inner class UploadItemViewHolder(val view: View) : RecyclerView.ViewHolder(view) {
+    inner class UploadItemViewHolder(val view: View) : LayeredViewHolder(view) {
+        override val foreground: View = view.fore
+        override val background: View = view.back
+
         fun bind(uri: Uri) = view.img_preview.setImageURI(uri)
     }
 }

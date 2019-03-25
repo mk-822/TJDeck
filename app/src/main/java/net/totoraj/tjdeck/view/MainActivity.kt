@@ -29,7 +29,7 @@ import kotlinx.android.synthetic.main.activity_main.*
 import net.totoraj.tjdeck.BuildConfig
 import net.totoraj.tjdeck.R
 import net.totoraj.tjdeck.adapter.UploadItemAdapter
-import net.totoraj.tjdeck.callback.SwipeToDeleteCallback
+import net.totoraj.tjdeck.callback.UploadItemSwipeCallback
 import net.totoraj.tjdeck.viewmodel.TwitterViewModel
 import java.io.BufferedReader
 import java.io.File
@@ -216,7 +216,7 @@ class MainActivity : AppCompatActivity(), OnBackPressedCallback {
                 }
 
 
-                val itemTouchHelper = ItemTouchHelper(object : SwipeToDeleteCallback(ItemTouchHelper.START) {
+                val itemTouchHelper = ItemTouchHelper(object : UploadItemSwipeCallback() {
                     override fun onSwiped(viewHolder: RecyclerView.ViewHolder, direction: Int) {
                         viewModel.removeFile(viewHolder.adapterPosition)
                     }
