@@ -9,12 +9,12 @@ import androidx.recyclerview.widget.RecyclerView
 import kotlinx.android.synthetic.main.layout_upload_item.view.*
 import net.totoraj.tjdeck.MyApplication.Companion.getAppContext
 import net.totoraj.tjdeck.R
-import net.totoraj.tjdeck.callback.UploadItemDiffCallback
+import net.totoraj.tjdeck.callback.UploadItemsDiffCallback
 
 class UploadItemAdapter(private var items: List<Uri>) : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
 
     fun updateItems(newItems: List<Uri>) {
-        val diffResult = DiffUtil.calculateDiff(UploadItemDiffCallback(items, newItems))
+        val diffResult = DiffUtil.calculateDiff(UploadItemsDiffCallback(items, newItems))
         items = newItems
         diffResult.dispatchUpdatesTo(this)
     }
@@ -34,7 +34,7 @@ class UploadItemAdapter(private var items: List<Uri>) : RecyclerView.Adapter<Rec
                 }
             }
 
-    inner class UploadItemViewHolder(val view: View) : RecyclerView.ViewHolder(view) {
+    inner class UploadItemViewHolder(private val view: View) : RecyclerView.ViewHolder(view) {
         fun bind(uri: Uri) = view.img_preview.setImageURI(uri)
     }
 }

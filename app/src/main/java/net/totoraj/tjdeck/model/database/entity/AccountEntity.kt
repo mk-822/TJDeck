@@ -3,10 +3,9 @@ package net.totoraj.tjdeck.model.database.entity
 import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.PrimaryKey
-import java.io.Serializable
 
 @Entity
-class AccountEntity(@PrimaryKey val userId: Long) : Serializable {
+class AccountEntity(@PrimaryKey val userId: Long) {
     @ColumnInfo
     var token: String? = ""
 
@@ -18,4 +17,18 @@ class AccountEntity(@PrimaryKey val userId: Long) : Serializable {
 
     @ColumnInfo
     var isDefaultUser: Boolean = false
+
+    fun clone(): AccountEntity = AccountEntity(userId).also {
+        it.token = token
+        it.tokenSecret = tokenSecret
+        it.iconUrl = iconUrl
+        it.isDefaultUser = isDefaultUser
+    }
+
+    override fun equals(other: Any?): Boolean {
+        if (other !is AccountEntity) return false
+        return userId == other.userId
+    }
+
+    override fun hashCode(): Int = userId.toInt()
 }
