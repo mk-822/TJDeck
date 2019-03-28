@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <dimen name="linked_account_offset">3dp</dimen>
+    <dimen name="upload_item_offset">3dp</dimen>
+</resources>
