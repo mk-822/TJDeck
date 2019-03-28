@@ -2,22 +2,19 @@ package net.totoraj.tjdeck.adapter
 
 import android.net.Uri
 import android.view.LayoutInflater
+import android.view.View
 import android.view.ViewGroup
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.RecyclerView
+import kotlinx.android.synthetic.main.layout_upload_item.view.*
 import net.totoraj.tjdeck.MyApplication.Companion.getAppContext
 import net.totoraj.tjdeck.R
-import net.totoraj.tjdeck.view.UploadItemDiffCallback
-import net.totoraj.tjdeck.view.UploadItemViewHolder
+import net.totoraj.tjdeck.callback.UploadItemsDiffCallback
 
 class UploadItemAdapter(private var items: List<Uri>) : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
 
-    interface UploadItemAdapterListener {
-        fun deleteItem(item: Uri)
-    }
-
     fun updateItems(newItems: List<Uri>) {
-        val diffResult = DiffUtil.calculateDiff(UploadItemDiffCallback(items, newItems))
+        val diffResult = DiffUtil.calculateDiff(UploadItemsDiffCallback(items, newItems))
         items = newItems
         diffResult.dispatchUpdatesTo(this)
     }
@@ -36,4 +33,8 @@ class UploadItemAdapter(private var items: List<Uri>) : RecyclerView.Adapter<Rec
                 else -> { // do nothing
                 }
             }
+
+    inner class UploadItemViewHolder(private val view: View) : RecyclerView.ViewHolder(view) {
+        fun bind(uri: Uri) = view.img_preview.setImageURI(uri)
+    }
 }

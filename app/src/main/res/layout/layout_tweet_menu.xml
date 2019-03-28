@@ -6,23 +6,39 @@
     android:background="@color/colorPrimaryDark"
     android:padding="5dp">
 
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/accounts_linked"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:clipToPadding="false"
+        android:overScrollMode="never"
+        android:padding="@dimen/linked_account_offset"
+        android:visibility="gone"
+        app:layout_constraintBottom_toTopOf="@+id/container_tweet"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
     <androidx.constraintlayout.widget.ConstraintLayout
         android:id="@+id/container_tweet"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_margin="5dp"
-        android:background="@drawable/selector_editor_bg"
+        android:layout_marginStart="5dp"
+        android:layout_marginEnd="5dp"
+        android:layout_marginBottom="5dp"
+        android:background="@drawable/selector_container_round_bg"
         app:layout_constraintBottom_toTopOf="@+id/button_tweet"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent">
+        app:layout_constraintTop_toBottomOf="@+id/accounts_linked"
+        app:layout_goneMarginTop="5dp">
 
         <EditText
             android:id="@+id/editor_tweet"
             android:layout_width="0dp"
             android:layout_height="150dp"
             android:layout_margin="5dp"
-            android:background="@color/white"
+            android:background="@color/transparent"
             android:enabled="false"
             android:gravity="start|top"
             android:hint="What's happening?"
@@ -51,14 +67,13 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:clipToPadding="false"
+            android:overScrollMode="never"
             android:padding="@dimen/upload_item_offset"
             android:visibility="gone"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@+id/editor_tweet">
-
-        </androidx.recyclerview.widget.RecyclerView>
+            app:layout_constraintTop_toBottomOf="@+id/editor_tweet" />
     </androidx.constraintlayout.widget.ConstraintLayout>
 
     <ImageView
@@ -76,7 +91,9 @@
         android:id="@+id/button_tweet"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_margin="5dp"
+        android:layout_marginStart="5dp"
+        android:layout_marginEnd="5dp"
+        android:layout_marginBottom="5dp"
         android:background="@drawable/selector_text_button_bg"
         android:enabled="false"
         android:gravity="center"

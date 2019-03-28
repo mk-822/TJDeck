@@ -11,7 +11,7 @@ import androidx.recyclerview.widget.RecyclerView
 import net.totoraj.tjdeck.MyApplication
 import net.totoraj.tjdeck.R
 
-abstract class SwipeToDeleteCallback(swipeDirs: Int) : ItemTouchHelper.SimpleCallback(0, swipeDirs) {
+abstract class UploadItemSwipeCallback(swipeDirs: Int) : ItemTouchHelper.SimpleCallback(0, swipeDirs) {
     private val context = MyApplication.getAppContext()
 
     override fun onMove(
@@ -23,12 +23,16 @@ abstract class SwipeToDeleteCallback(swipeDirs: Int) : ItemTouchHelper.SimpleCal
         return false
     }
 
-    private val deleteIcon = ContextCompat.getDrawable(context, R.drawable.ic_delete)
-    private val deleteIconIntrinsicWidth = deleteIcon?.intrinsicWidth
-    private val deleteIconIntrinsicHeight = deleteIcon?.intrinsicHeight
+    override fun getSwipeThreshold(viewHolder: RecyclerView.ViewHolder): Float {
+        // fraction of the attached RecyclerView size
+        return .3f
+    }
 
-    private val background = ColorDrawable()
-    private val leftBackgroundColor = ContextCompat.getColor(context, R.color.red)
+    private val deleteIcon = ContextCompat.getDrawable(context, R.drawable.ic_delete)!!
+    private val deleteIconIntrinsicWidth = deleteIcon.intrinsicWidth
+    private val deleteIconIntrinsicHeight = deleteIcon.intrinsicHeight
+
+    private val background = ColorDrawable(ContextCompat.getColor(context, R.color.red))
     private val clearPaint = Paint().apply { xfermode = PorterDuffXfermode(PorterDuff.Mode.CLEAR) }
 
     override fun onChildDraw(
@@ -42,28 +46,16 @@ abstract class SwipeToDeleteCallback(swipeDirs: Int) : ItemTouchHelper.SimpleCal
     ) {
         val itemView = viewHolder.itemView
 
-        val isCanceled = dX == 0f && !isCurrentlyActive
-        if (isCanceled) {
-            clearCanvas(c, itemView.right + dX, itemView.top.toFloat(), itemView.right.toFloat(), itemView.bottom.toFloat())
-            super.onChildDraw(c, recyclerView, viewHolder, dX, dY, actionState, isCurrentlyActive)
-            return
-        }
+        when {
+            dX == 0f -> {
+                clearCanvas(c, itemView.left.toFloat(), itemView.top.toFloat(), itemView.right.toFloat(), itemView.bottom.toFloat())
+            }
+            dX < 0 -> {
+                background.setBounds(itemView.left, itemView.top, itemView.right, itemView.bottom)
+                background.draw(c)
 
-        // Draw the delete background
-        val isLeftDirection = dX < 0
-        if (isLeftDirection) {
-            background.color = leftBackgroundColor
-            background.setBounds(itemView.right + dX.toInt(), itemView.top, itemView.right, itemView.bottom)
-        }
-        background.draw(c)
-
-        val itemHeight = itemView.bottom - itemView.top
-        if (deleteIcon != null
-                && deleteIconIntrinsicWidth != null
-                && deleteIconIntrinsicHeight != null) {
-
-            if (isLeftDirection) {
                 // Calculate position of delete icon
+                val itemHeight = itemView.bottom - itemView.top
                 val deleteIconTop = itemView.top + (itemHeight - deleteIconIntrinsicHeight) / 2
                 val deleteIconMargin = (itemHeight - deleteIconIntrinsicHeight) / 2
                 val deleteIconLeft = itemView.right - deleteIconMargin - deleteIconIntrinsicWidth
@@ -79,7 +71,7 @@ abstract class SwipeToDeleteCallback(swipeDirs: Int) : ItemTouchHelper.SimpleCal
         super.onChildDraw(c, recyclerView, viewHolder, dX, dY, actionState, isCurrentlyActive)
     }
 
-    private fun clearCanvas(c: Canvas?, left: Float, top: Float, right: Float, bottom: Float) {
-        c?.drawRect(left, top, right, bottom, clearPaint)
+    private fun clearCanvas(c: Canvas, left: Float, top: Float, right: Float, bottom: Float) {
+        c.drawRect(left, top, right, bottom, clearPaint)
     }
 }

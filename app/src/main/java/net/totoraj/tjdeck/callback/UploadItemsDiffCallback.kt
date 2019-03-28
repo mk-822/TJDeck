@@ -1,9 +1,9 @@
-package net.totoraj.tjdeck.view
+package net.totoraj.tjdeck.callback
 
 import android.net.Uri
 import androidx.recyclerview.widget.DiffUtil
 
-class UploadItemDiffCallback(
+class UploadItemsDiffCallback(
         private val old: List<Uri>,
         private val new: List<Uri>
 ) : DiffUtil.Callback() {

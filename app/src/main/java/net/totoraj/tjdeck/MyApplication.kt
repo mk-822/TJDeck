@@ -2,11 +2,8 @@ package net.totoraj.tjdeck
 
 import android.app.Application
 import android.content.Context
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.GlobalScope
-import kotlinx.coroutines.launch
 import net.totoraj.tjdeck.model.database.MyDatabase
-import net.totoraj.tjdeck.model.repository.TwitterRepository
+import net.totoraj.tjdeck.repository.TwitterRepository
 import twitter4j.TwitterFactory
 
 class MyApplication : Application() {
@@ -24,12 +21,6 @@ class MyApplication : Application() {
         MyDatabase.createDatabase(appContext)
         TwitterRepository.init(appContext, twitter)
 
-        if (TwitterRepository.Account.isLinked) {
-            TwitterRepository.Consumer.init()
-            GlobalScope.launch(Dispatchers.IO) {
-                TwitterRepository.Token.loadAccessToken()
-            }
-        }
+        if (TwitterRepository.Consumer.isSaved) TwitterRepository.Consumer.init()
     }
-
 }
