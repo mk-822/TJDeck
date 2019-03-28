@@ -6,7 +6,7 @@ import androidx.annotation.DimenRes
 import androidx.recyclerview.widget.RecyclerView
 import net.totoraj.tjdeck.MyApplication
 
-class UploadItemDecoration(@DimenRes private val itemOffsetId: Int) : RecyclerView.ItemDecoration() {
+class TransparentOffsetDecoration(@DimenRes private val itemOffsetId: Int) : RecyclerView.ItemDecoration() {
     private val itemOffset = MyApplication.getAppContext().resources.getDimensionPixelOffset(itemOffsetId)
 
     override fun getItemOffsets(outRect: Rect, view: View, parent: RecyclerView, state: RecyclerView.State) {

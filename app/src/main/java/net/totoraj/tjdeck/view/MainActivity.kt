@@ -28,8 +28,10 @@ import com.google.android.material.navigation.NavigationView
 import kotlinx.android.synthetic.main.activity_main.*
 import net.totoraj.tjdeck.BuildConfig
 import net.totoraj.tjdeck.R
+import net.totoraj.tjdeck.adapter.LinkedAccountAdapter
 import net.totoraj.tjdeck.adapter.UploadItemAdapter
-import net.totoraj.tjdeck.callback.UpdateItemSwipeCallback
+import net.totoraj.tjdeck.callback.UploadItemSwipeCallback
+import net.totoraj.tjdeck.model.database.entity.AccountEntity
 import net.totoraj.tjdeck.viewmodel.TwitterViewModel
 import java.io.BufferedReader
 import java.io.File
@@ -99,7 +101,7 @@ class MainActivity : AppCompatActivity(), OnBackPressedCallback {
 
         initDrawer()
         initTweetMenu()
-        viewModel.refreshLinkedAccounts()
+        viewModel.verifyAccounts()
 
         initWebView()
         if (savedInstanceState == null) mWebView.loadUrl(TWEET_DECK)
@@ -108,8 +110,12 @@ class MainActivity : AppCompatActivity(), OnBackPressedCallback {
 
     override fun onResume() {
         super.onResume()
-
         if (videoFrame.visibility == View.VISIBLE) hideSystemUi()
+    }
+
+    override fun onPause() {
+        super.onPause()
+        viewModel.storeAccounts()
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
@@ -206,37 +212,39 @@ class MainActivity : AppCompatActivity(), OnBackPressedCallback {
             }
 
             uploadItems.run {
-                viewModel.observeFiles(this@MainActivity) {
-                    it ?: return@observeFiles
+                adapter = UploadItemAdapter(listOf())
 
-                    uploadItems.run {
-                        if (adapter == null) adapter = UploadItemAdapter(listOf())
-                    }
-                    adaptPreview(it)
-                }
-
-
-                val itemTouchHelper = ItemTouchHelper(object : UpdateItemSwipeCallback(ItemTouchHelper.START) {
+                val itemTouchHelper = ItemTouchHelper(object : UploadItemSwipeCallback(ItemTouchHelper.START) {
                     override fun onSwiped(viewHolder: RecyclerView.ViewHolder, direction: Int) {
                         viewModel.removeFile(viewHolder.adapterPosition)
                     }
                 })
                 itemTouchHelper.attachToRecyclerView(this)
+
+                viewModel.observeFiles(this@MainActivity) { items ->
+                    items ?: return@observeFiles
+                    adaptPreview(items)
+                }
             }
 
-            viewModel.run {
-                observeLinkedAccounts(this@MainActivity) { accounts ->
-                    accounts ?: return@observeLinkedAccounts
-
-                    if (accounts.isNotEmpty()) {
-                        tweetEdit.isEnabled = true
-                        addMediaButton.run {
-                            isActivated = true
-                            isEnabled = true
+            linkedAccounts.run {
+                adapter = LinkedAccountAdapter(mutableListOf()).apply {
+                    setOnItemClickListener(object : LinkedAccountAdapter.OnItemClickListener {
+                        override fun onItemClick(account: AccountEntity) {
+                            if (account.isDefaultUser) return
+                            viewModel.setDefaultAccount(account)
                         }
-                        // todo adapt account icon list
-                    }
+                    })
                 }
+
+                viewModel.observeLinkedAccounts(this@MainActivity) { accounts ->
+                    accounts ?: return@observeLinkedAccounts
+                    adaptAccount(accounts)
+                }
+            }
+
+            inputCharsIndicator.setOnClickListener {
+                viewModel.addDummyAccounts()
             }
         }
 

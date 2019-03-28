@@ -1,9 +1,6 @@
 package net.totoraj.tjdeck.model.database
 
-import androidx.room.Dao
-import androidx.room.Insert
-import androidx.room.OnConflictStrategy
-import androidx.room.Query
+import androidx.room.*
 import net.totoraj.tjdeck.model.database.entity.AccountEntity
 
 @Dao
@@ -19,7 +16,10 @@ interface AccountDao {
     suspend fun findDefaultAccount(): List<AccountEntity>
 
     @Query("SELECT * FROM AccountEntity WHERE userId = :userId")
-    suspend fun findByUserId(userId: String): List<AccountEntity>
+    suspend fun findByUserId(userId: Long): List<AccountEntity>
+
+    @Delete
+    suspend fun delete(entities: List<AccountEntity>)
 
     @Query("DELETE FROM AccountEntity")
     suspend fun deleteAll()

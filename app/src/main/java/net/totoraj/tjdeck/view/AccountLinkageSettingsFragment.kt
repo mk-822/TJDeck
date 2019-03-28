@@ -8,7 +8,10 @@ import android.text.TextWatcher
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.*
+import android.widget.EditText
+import android.widget.FrameLayout
+import android.widget.ImageView
+import android.widget.TextView
 import androidx.activity.OnBackPressedCallback
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.FragmentActivity
@@ -16,7 +19,7 @@ import kotlinx.android.synthetic.main.fragment_account_linkage_settings.*
 import net.totoraj.tjdeck.R
 import net.totoraj.tjdeck.exception.AccessTokenException
 import net.totoraj.tjdeck.exception.RequestTokenException
-import net.totoraj.tjdeck.model.repository.TwitterRepository
+import net.totoraj.tjdeck.repository.TwitterRepository
 import net.totoraj.tjdeck.viewmodel.TwitterViewModel
 
 
@@ -49,8 +52,8 @@ class AccountLinkageSettingsFragment : Fragment(), OnBackPressedCallback {
                 observeThrowable(this@AccountLinkageSettingsFragment) {
                     it ?: return@observeThrowable
 
-                    isCancelable = true
                     dismissLoading()
+                    isCancelable = true
                     when (it.second) {
                         is RequestTokenException -> resetViews()
                         is AccessTokenException -> resetGetAuthTokenViews()
@@ -60,23 +63,34 @@ class AccountLinkageSettingsFragment : Fragment(), OnBackPressedCallback {
                 observeCallbackUrl(this@AccountLinkageSettingsFragment) { urlString ->
                     urlString ?: return@observeCallbackUrl
 
-                    isCancelable = true
-                    dismissLoading()
                     startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(urlString)))
                     pinEditor.isEnabled = true
+                    dismissLoading()
+                    isCancelable = true
                 }
 
-                observeAccessToken(this@AccountLinkageSettingsFragment) { accessToken ->
-                    accessToken ?: return@observeAccessToken
+                observeLinkedAccounts(this@AccountLinkageSettingsFragment) { accounts ->
+                    accounts ?: return@observeLinkedAccounts
+                    if (!this@AccountLinkageSettingsFragment.isVisible) return@observeLinkedAccounts
 
-                    isCancelable = true
                     dismissLoading()
-                    Toast.makeText(mActivity, "linked: ${accessToken.screenName}", Toast.LENGTH_LONG).show()
-                    resetGetAuthTokenViews()
-                    refreshLinkedAccounts()
+                    isCancelable = true
+                    handleOnBackPressed()
                 }
             }
         }
+    }
+
+    override fun handleOnBackPressed(): Boolean {
+        if (!this.isVisible) return false
+        if (!isCancelable) return true
+
+        resetViews()
+        requireFragmentManager().beginTransaction().run {
+            hide(this@AccountLinkageSettingsFragment)
+            commit()
+        }
+        return true
     }
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?,
@@ -95,19 +109,6 @@ class AccountLinkageSettingsFragment : Fragment(), OnBackPressedCallback {
         linkButton = button_account_link
         loadingIndicator = indicator_loading
         initViews()
-    }
-
-    override fun handleOnBackPressed(): Boolean {
-        if (!this.isVisible) return false
-        if (!isCancelable) return true
-
-        resetViews()
-        viewModel.loadAccessToken()
-        requireFragmentManager().beginTransaction().run {
-            hide(this@AccountLinkageSettingsFragment)
-            commit()
-        }
-        return true
     }
 
     private fun initViews() {
@@ -160,9 +161,9 @@ class AccountLinkageSettingsFragment : Fragment(), OnBackPressedCallback {
         requestButton.run {
             isEnabled = !(cKeyEditor.isEnabled && cSecretEditor.isEnabled)
             setOnClickListener {
+                requestButton.isEnabled = false
                 isCancelable = false
                 showLoading()
-
                 viewModel.getRequestToken(
                         cKeyEditor.text.toString(),
                         cSecretEditor.text.toString()
@@ -185,6 +186,7 @@ class AccountLinkageSettingsFragment : Fragment(), OnBackPressedCallback {
         })
 
         linkButton.setOnClickListener {
+            linkButton.isEnabled = false
             isCancelable = false
             showLoading()
             viewModel.getAccessToken(pinEditor.text.toString())

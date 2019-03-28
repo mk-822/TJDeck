@@ -15,7 +15,9 @@ import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import kotlinx.android.synthetic.main.layout_tweet_menu.view.*
 import net.totoraj.tjdeck.R
+import net.totoraj.tjdeck.adapter.LinkedAccountAdapter
 import net.totoraj.tjdeck.adapter.UploadItemAdapter
+import net.totoraj.tjdeck.model.database.entity.AccountEntity
 import kotlin.math.floor
 
 class TweetMenuView : ConstraintLayout {
@@ -26,6 +28,8 @@ class TweetMenuView : ConstraintLayout {
     private val maxTweetLength = resources.getInteger(R.integer.max_tweet_length)
     private val maxMediaWithTweet = resources.getInteger(R.integer.max_media_with_tweet)
 
+    val linkedAccounts: RecyclerView
+    val tweetContainer: View
     val tweetEdit: EditText
     val inputCharsIndicator: ProgressBar
     val uploadItems: RecyclerView
@@ -36,6 +40,8 @@ class TweetMenuView : ConstraintLayout {
     constructor(context: Context, attrs: AttributeSet?) : this(context, attrs, 0)
     constructor(context: Context, attrs: AttributeSet?, defStyleAttrs: Int) : super(context, attrs, defStyleAttrs) {
         inflate(context, R.layout.layout_tweet_menu, this)
+        linkedAccounts = accounts_linked
+        tweetContainer = container_tweet
         tweetEdit = editor_tweet
         inputCharsIndicator = indicator_input_chars
         uploadItems = items_upload
@@ -45,6 +51,8 @@ class TweetMenuView : ConstraintLayout {
     }
 
     private fun init() {
+        tweetContainer.isActivated = false
+
         addMediaButton.run {
             isActivated = false
             isEnabled = false
@@ -70,20 +78,40 @@ class TweetMenuView : ConstraintLayout {
             })
         }
 
+        linkedAccounts.run {
+            layoutManager = GridLayoutManager(context, 6)
+            addItemDecoration(TransparentOffsetDecoration(R.dimen.linked_account_offset))
+        }
+
         uploadItems.run {
             layoutManager = GridLayoutManager(context, 2)
-            addItemDecoration(UploadItemDecoration(R.dimen.upload_item_offset))
+            addItemDecoration(TransparentOffsetDecoration(R.dimen.upload_item_offset))
         }
     }
 
-    fun adaptPreview(files: List<Uri>) {
-        uploadItems.run {
-            visibility = if (files.isNotEmpty()) View.VISIBLE else View.GONE
-            (adapter as UploadItemAdapter).updateItems(files)
+    fun adaptAccount(accounts: List<AccountEntity>) {
+        val exists = accounts.isNotEmpty()
+        tweetContainer.isActivated = exists
+        linkedAccounts.run {
+            visibility = if (exists) View.VISIBLE else View.GONE
+            (adapter as LinkedAccountAdapter).updateAccounts(accounts)
         }
-        tweetButton.isEnabled = tweetEdit.text.isNotEmpty() || files.isNotEmpty()
+        tweetEdit.isEnabled = exists
         addMediaButton.run {
-            if (files.size >= maxMediaWithTweet) {
+            isActivated = exists
+            isEnabled = exists
+        }
+    }
+
+    fun adaptPreview(items: List<Uri>) {
+        val exists = items.isNotEmpty()
+        uploadItems.run {
+            visibility = if (exists) View.VISIBLE else View.GONE
+            (adapter as UploadItemAdapter).updateItems(items)
+        }
+        tweetButton.isEnabled = exists || tweetEdit.text.isNotEmpty()
+        addMediaButton.run {
+            if (items.size >= maxMediaWithTweet) {
                 isActivated = false
                 isEnabled = false
             } else {

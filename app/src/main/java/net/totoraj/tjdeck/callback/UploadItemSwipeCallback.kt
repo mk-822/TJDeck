@@ -1,16 +1,18 @@
 package net.totoraj.tjdeck.callback
 
 import android.graphics.Canvas
-import android.view.View
+import android.graphics.Paint
+import android.graphics.PorterDuff
+import android.graphics.PorterDuffXfermode
+import android.graphics.drawable.ColorDrawable
+import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.RecyclerView
+import net.totoraj.tjdeck.MyApplication
+import net.totoraj.tjdeck.R
 
-abstract class UploadItemSwipeCallback : ItemTouchHelper.SimpleCallback(0, ItemTouchHelper.START) {
-
-    abstract class LayeredViewHolder(view: View) : RecyclerView.ViewHolder(view) {
-        abstract val foreground: View
-        abstract val background: View
-    }
+abstract class UploadItemSwipeCallback(swipeDirs: Int) : ItemTouchHelper.SimpleCallback(0, swipeDirs) {
+    private val context = MyApplication.getAppContext()
 
     override fun onMove(
             recyclerView: RecyclerView,
@@ -21,6 +23,18 @@ abstract class UploadItemSwipeCallback : ItemTouchHelper.SimpleCallback(0, ItemT
         return false
     }
 
+    override fun getSwipeThreshold(viewHolder: RecyclerView.ViewHolder): Float {
+        // fraction of the attached RecyclerView size
+        return .3f
+    }
+
+    private val deleteIcon = ContextCompat.getDrawable(context, R.drawable.ic_delete)!!
+    private val deleteIconIntrinsicWidth = deleteIcon.intrinsicWidth
+    private val deleteIconIntrinsicHeight = deleteIcon.intrinsicHeight
+
+    private val background = ColorDrawable(ContextCompat.getColor(context, R.color.red))
+    private val clearPaint = Paint().apply { xfermode = PorterDuffXfermode(PorterDuff.Mode.CLEAR) }
+
     override fun onChildDraw(
             c: Canvas,
             recyclerView: RecyclerView,
@@ -30,18 +44,34 @@ abstract class UploadItemSwipeCallback : ItemTouchHelper.SimpleCallback(0, ItemT
             actionState: Int,
             isCurrentlyActive: Boolean
     ) {
-        val holder = viewHolder as LayeredViewHolder
+        val itemView = viewHolder.itemView
+
         when {
-            dX == 0f && !isCurrentlyActive -> {
-                // canceled
-                getDefaultUIUtil().onDraw(c, recyclerView, holder.background, 0f, 0f, actionState, isCurrentlyActive)
-                getDefaultUIUtil().onDraw(c, recyclerView, holder.foreground, 0f, 0f, actionState, isCurrentlyActive)
+            dX == 0f -> {
+                clearCanvas(c, itemView.left.toFloat(), itemView.top.toFloat(), itemView.right.toFloat(), itemView.bottom.toFloat())
             }
             dX < 0 -> {
-                // backgroundを固定して、foregroundだけを動かす
-                getDefaultUIUtil().onDraw(c, recyclerView, holder.background, 0f, 0f, actionState, isCurrentlyActive)
-                getDefaultUIUtil().onDraw(c, recyclerView, holder.foreground, dX, dY, actionState, isCurrentlyActive)
+                background.setBounds(itemView.left, itemView.top, itemView.right, itemView.bottom)
+                background.draw(c)
+
+                // Calculate position of delete icon
+                val itemHeight = itemView.bottom - itemView.top
+                val deleteIconTop = itemView.top + (itemHeight - deleteIconIntrinsicHeight) / 2
+                val deleteIconMargin = (itemHeight - deleteIconIntrinsicHeight) / 2
+                val deleteIconLeft = itemView.right - deleteIconMargin - deleteIconIntrinsicWidth
+                val deleteIconRight = itemView.right - deleteIconMargin
+                val deleteIconBottom = deleteIconTop + deleteIconIntrinsicHeight
+
+                // Draw the delete icon
+                deleteIcon.setBounds(deleteIconLeft, deleteIconTop, deleteIconRight, deleteIconBottom)
+                deleteIcon.draw(c)
             }
         }
+
+        super.onChildDraw(c, recyclerView, viewHolder, dX, dY, actionState, isCurrentlyActive)
+    }
+
+    private fun clearCanvas(c: Canvas, left: Float, top: Float, right: Float, bottom: Float) {
+        c.drawRect(left, top, right, bottom, clearPaint)
     }
 }
