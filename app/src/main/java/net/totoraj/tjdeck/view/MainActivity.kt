@@ -10,10 +10,7 @@ import android.os.Environment
 import android.provider.MediaStore
 import android.text.format.DateFormat
 import android.util.Log
-import android.view.KeyEvent
-import android.view.View
-import android.view.ViewGroup
-import android.view.WindowManager
+import android.view.*
 import android.view.inputmethod.InputMethodManager
 import android.webkit.*
 import android.widget.FrameLayout
@@ -106,7 +103,6 @@ class MainActivity : AppCompatActivity(), OnBackPressedCallback {
 
         initWebView()
         if (savedInstanceState == null) mWebView.loadUrl(TWEET_DECK)
-
     }
 
     override fun onResume() {
@@ -152,6 +148,8 @@ class MainActivity : AppCompatActivity(), OnBackPressedCallback {
 
     //普通に戻るボタンを押してもアプリを終了させない
     override fun dispatchKeyEvent(event : KeyEvent?): Boolean {
+        mWebView.evaluateJavascript("tjScrollToTop()", null)
+
         //画面から離れた場合
         if (event?.action == KeyEvent.ACTION_UP) {
             //戻るボタンの場合
