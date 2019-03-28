@@ -1,6 +1,7 @@
 package net.totoraj.tjdeck.viewmodel
 
 import android.net.Uri
+import android.util.Log
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.MutableLiveData
@@ -142,20 +143,23 @@ class TwitterViewModel : ViewModel(), CoroutineScope {
     }
 
     fun storeAccounts() = runBlocking {
+        val toStoreAccounts = accounts.value ?: return@runBlocking
+        if (toStoreAccounts.isEmpty()) {
+            TwitterRepository.Account.deleteAll()
+            return@runBlocking
+        }
+
         runCatching { TwitterRepository.Account.findAll() }.fold(
                 onSuccess = { result ->
-                    this@TwitterViewModel.accounts.value?.let { accounts ->
-                        if (accounts.isEmpty()) TwitterRepository.Account.deleteAll()
-                        TwitterRepository.Account.upsert(accounts)
+                    val toDeleteAccounts = result.toMutableList()
+                    toDeleteAccounts.retainAll { !toStoreAccounts.contains(it) }
 
-                        val toDeleteAccounts = result.toMutableList()
-                        toDeleteAccounts.retainAll { !accounts.contains(it) }
-                        TwitterRepository.Account.delete(toDeleteAccounts)
-                    } ?: TwitterRepository.Account.deleteAll()
+                    TwitterRepository.Account.upsert(toStoreAccounts)
+                    TwitterRepository.Account.delete(toDeleteAccounts)
                     return@runBlocking
                 },
                 onFailure = {
-                    TwitterRepository.Account.deleteAll()
+                    Log.e("TwitterViewModel", "error occurred in storeAccounts", it)
                     return@runBlocking
                 }
         )
