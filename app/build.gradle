@@ -10,6 +10,8 @@ kapt {
 }
 
 android {
+    signingConfigs {
+    }
     compileSdkVersion 28
     defaultConfig {
         applicationId "net.totoraj.tjdeck"
@@ -38,14 +40,11 @@ android {
 dependencies {
     // room-coroutines:2.1.0-alpha05 not exists
     def room_version = '2.1.0-alpha04'
-
     implementation fileTree(include: ['*.jar'], dir: 'libs')
-
     // test
     testImplementation 'junit:junit:4.12'
     androidTestImplementation 'androidx.test:runner:1.1.2-alpha02'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.2.0-alpha02'
-
     // android
     implementation 'com.google.android.material:material:1.1.0-alpha04'
     implementation 'androidx.appcompat:appcompat:1.1.0-alpha03'
@@ -55,14 +54,11 @@ dependencies {
     implementation "androidx.room:room-runtime:$room_version"
     kapt "androidx.room:room-compiler:$room_version"
     implementation "androidx.room:room-coroutines:$room_version"
-
     //kotlin
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
-
     // coroutine
     implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-core:1.1.1'
     implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.1.1'
-
     // third party
     implementation 'org.twitter4j:twitter4j-core:4.0.7'
     implementation 'com.squareup.picasso:picasso:2.71828'
